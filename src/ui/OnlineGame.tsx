@@ -30,7 +30,6 @@ export interface OnlineInit {
 interface OnlineGameProps {
   msgs: Messages;
   init: OnlineInit;
-  theme: 'light' | 'dark';
   onExit: () => void;
 }
 
@@ -43,7 +42,7 @@ const RECONNECT_DELAYS_MS = [4000, 8000, 16_000, 32_000, 60_000];
 // Erro local de tempo esgotado, somado aos erros do transporte.
 type OnlineError = TransportError | { kind: 'tempo-esgotado' };
 
-export function OnlineGame({ msgs, init, theme, onExit }: OnlineGameProps) {
+export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
   const [code, setCode] = useState(init.code);
   const [stage, setStage] = useState<Stage>('connecting');
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
@@ -60,8 +59,6 @@ export function OnlineGame({ msgs, init, theme, onExit }: OnlineGameProps) {
   const attemptRef = useRef<TransportAttempt | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectTriesRef = useRef(0);
-  const themeRef = useRef(theme);
-  themeRef.current = theme;
   const [replayOpen, setReplayOpen] = useState(false);
   const [leaveAsk, setLeaveAsk] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -172,7 +169,7 @@ export function OnlineGame({ msgs, init, theme, onExit }: OnlineGameProps) {
                 // REQ-SOM-05: a jogada que chega do adversário também soa.
                 setSnapshot((prev) => {
                   if (prev !== null) {
-                    playMoveSounds(soundsForTransition(prev.state, snap.state), themeRef.current);
+                    playMoveSounds(soundsForTransition(prev.state, snap.state));
                   }
                   return snap;
                 });
@@ -389,7 +386,6 @@ export function OnlineGame({ msgs, init, theme, onExit }: OnlineGameProps) {
       <ReplayScreen
         msgs={msgs}
         entry={snapshotEntry(snapshot)}
-        theme={theme}
         onBack={() => setReplayOpen(false)}
       />
     );

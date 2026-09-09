@@ -1,66 +1,76 @@
 import { expect, test } from '@playwright/test';
 
-// Som de escrita (spec SOM): clipes reais servidos de public/sounds/, sem
-// erro de rede/decodificação, e créditos visíveis (licença de atribuição).
+// Som de jogada (spec SOM, redesenhado pela spec NEON): blips sintetizados
+// por Web Audio, sem depender de gravação nem de rede (REQ-NEON-07).
 
-test('clipes de som carregam sem erro em ambos os temas (REQ-SOM-01..03)', async ({ page }) => {
+test('sons sintetizados tocam sem erro e sem nenhuma requisição de rede (AC-NEON-02)', async ({ page }) => {
   const errors: string[] = [];
+  const soundRequests: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('response', (r) => {
-    if (r.url().includes('/sounds/') && !r.ok()) errors.push(`${r.status()} ${r.url()}`);
+  page.on('request', (r) => {
+    if (r.url().includes('/sounds/')) soundRequests.push(r.url());
   });
 
   await page.goto('/');
   await page.getByTestId('mode-local').click();
   await page.getByTestId('start').click();
 
-  // Tema caderno: X, O e um risco pequeno.
   await page.getByTestId('cell-4.0').click(); // X
   await page.getByTestId('cell-0.4').click(); // O
   await page.waitForTimeout(400);
 
-  // Tema lousa.
-  await page.getByTestId('settings-open').click();
-  await page.getByTestId('theme-toggle').click();
-  await page.getByTestId('settings-close').click();
-  await page.getByTestId('cell-4.1').click();
-  await page.waitForTimeout(400);
-
   expect(errors).toEqual([]);
+  expect(soundRequests).toEqual([]);
 });
 
-test('desfazer não solicita clipe novo (RN-SOM-05)', async ({ page }) => {
-  const requests: string[] = [];
-  page.on('request', (r) => {
-    if (r.url().includes('/sounds/')) requests.push(r.url());
+test('desfazer não dispara som novo (RN-SOM-05, AC-NEON-03)', async ({ page }) => {
+  await page.goto('/');
+
+  const counts = await page.evaluate(async () => {
+    const soundModule = '/src/audio/sound.ts';
+    const snd = (await import(/* @vite-ignore */ soundModule)) as typeof import('../../src/audio/sound');
+    const eventsModule = '/src/audio/events.ts';
+    const evt = (await import(/* @vite-ignore */ eventsModule)) as typeof import('../../src/audio/events');
+    const engineModule = '/src/engine/index.ts';
+    const engine = (await import(/* @vite-ignore */ engineModule)) as typeof import('../../src/engine');
+
+    const ctx = new AudioContext();
+    await ctx.resume();
+    let started = 0;
+    const origStart = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, when?: number) {
+      started++;
+      return origStart.call(this, when);
+    };
+
+    snd.resetAudio();
+    const RealCtor = window.AudioContext;
+    // Precisa ser construível (`new`), então nada de arrow function aqui.
+    // @ts-expect-error substituição só pra medir neste teste
+    window.AudioContext = function AudioContextStub() {
+      return ctx;
+    };
+    snd.setMuted(false);
+
+    const classic = { depth: 2, clearVariant: false, tiebreak: 'majority' as const, startingPlayer: 'X' as const };
+    const before = engine.createGame(classic);
+    const after = engine.applyMove(before, [4, 4]);
+    snd.playMoveSounds(evt.soundsForTransition(before, after));
+    await new Promise((r) => setTimeout(r, 200));
+    const afterMove = started;
+
+    const undone = engine.undo(after);
+    snd.playMoveSounds(evt.soundsForTransition(after, undone));
+    await new Promise((r) => setTimeout(r, 200));
+    const afterUndo = started;
+
+    window.AudioContext = RealCtor;
+    await ctx.close();
+    return { afterMove, afterUndo };
   });
-  await page.goto('/');
-  await page.getByTestId('mode-local').click();
-  await page.getByTestId('start').click();
-  await page.getByTestId('cell-4.4').click();
-  await page.waitForTimeout(300);
-  const before = requests.length;
-  await page.getByTestId('undo').click();
-  await page.waitForTimeout(300);
-  expect(requests.length).toBe(before); // nada novo pedido ao desfazer
-});
 
-test('créditos das gravações ficam no modal de informações (licença de atribuição)', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByTestId('info-modal')).toBeHidden();
-  await page.getByTestId('info-open').click();
-  await expect(page.getByTestId('sound-credits')).toContainText('soundbible.com');
-  await expect(page.getByRole('link', { name: /GitHub/i })).toHaveAttribute(
-    'href',
-    'https://github.com/BrennoKM/Super-TicTacToe',
-  );
-
-  // Esc fecha; clicar fora também fecha.
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('info-modal')).toBeHidden();
-  await page.getByTestId('info-open').click();
-  await page.getByTestId('info-modal').click({ position: { x: 5, y: 5 } });
-  await expect(page.getByTestId('info-modal')).toBeHidden();
+  expect(counts.afterMove).toBeGreaterThan(0); // a marca tocou
+  expect(counts.afterUndo).toBe(counts.afterMove); // desfazer não somou nada
 });
 
 // RN-SOM-07, 10: sons de jogadas próximas não tocam por cima uns dos outros.
@@ -76,7 +86,7 @@ test('sons de jogadas seguidas ficam em fila, sem sobrepor (RN-SOM-07, 10)', asy
     const starts: { start: number; dur: number }[] = [];
     const origStart = AudioBufferSourceNode.prototype.start;
     AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, when?: number) {
-      // Duração real ao ouvido: o clipe é esticado por playbackRate (x rápido,
+      // Duração real ao ouvido: a voz é esticada por playbackRate (x rápido,
       // riscos mais devagar), então a duração bruta do buffer não basta aqui.
       const effDur = this.buffer!.duration / (this.playbackRate.value || 1);
       starts.push({ start: +(when ?? 0).toFixed(3), dur: +effDur.toFixed(3) });
@@ -94,9 +104,9 @@ test('sons de jogadas seguidas ficam em fila, sem sobrepor (RN-SOM-07, 10)', asy
 
     // Cenário representativo: jogador marca O, e 100ms depois (tempo real,
     // como o bot faz) chega a resposta do adversário, fechando um tabuleiro.
-    snd.playMoveSounds({ mark: 'O', strikes: [] }, 'light');
+    snd.playMoveSounds({ mark: 'O', strikes: [] });
     await new Promise((r) => setTimeout(r, 100));
-    snd.playMoveSounds({ mark: 'X', strikes: ['small'] }, 'light');
+    snd.playMoveSounds({ mark: 'X', strikes: ['small'] });
     await new Promise((r) => setTimeout(r, 80));
 
     window.AudioContext = RealCtor;
@@ -137,7 +147,7 @@ test('marca + risco pequeno + risco grande da mesma jogada tocam por inteiro', a
       return ctx;
     };
     snd.setMuted(false);
-    snd.playMoveSounds({ mark: 'X', strikes: ['small', 'big'] }, 'light');
+    snd.playMoveSounds({ mark: 'X', strikes: ['small', 'big'] });
     await new Promise((r) => setTimeout(r, 50));
     window.AudioContext = RealCtor;
     await ctx.close();

@@ -32,7 +32,6 @@ export function buildFrames(entry: Pick<LibraryEntry, 'config' | 'moves'>): GifF
 
 export interface GifPalette {
   bg: string;
-  ruled: string;
   line: string;
   lineSoft: string;
   x: string;
@@ -45,54 +44,22 @@ export function themePalette(): GifPalette {
   const read = (name: string, fallback: string) =>
     style.getPropertyValue(name).trim() || fallback;
   return {
-    bg: read('--bg', '#faf6ec'),
-    ruled: read('--ruled-line', 'rgba(116,160,204,0.35)'),
-    line: read('--line', '#22335c'),
-    lineSoft: read('--line-soft', 'rgba(34,51,92,0.4)'),
-    x: read('--mark-x', '#c0392b'),
-    o: read('--mark-o', '#1f5fa8'),
+    bg: read('--bg', '#07041c'),
+    line: read('--line', '#8f6bff'),
+    lineSoft: read('--line-soft', 'rgba(143,107,255,0.38)'),
+    x: read('--mark-x', '#ff3ec8'),
+    o: read('--mark-o', '#29e0ff'),
   };
 }
 
 export const GIF_SIZE = 512;
 
-// Ruído determinístico: mesma semente, mesmo tremor em todos os quadros, pra o
-// tabuleiro não vibrar durante a animação (REQ-REPLAY2-02).
-function makeJitter(seed: number) {
-  return (index: number) => {
-    const x = Math.sin(seed * 374.761 + index * 91.373) * 43758.5453;
-    return (x - Math.floor(x)) * 2 - 1;
-  };
-}
-
-type Jitter = (index: number) => number;
-
-// Traço à mão: linha quebrada em segmentos com desvio perpendicular pequeno.
-function handLine(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  wobble: number,
-  jitter: Jitter,
-  key: number,
-): void {
-  const segments = 8;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
+// Traço reto com brilho neon (REQ-NEON-08): substitui o tremor de traço à
+// mão da spec REPLAY2 original, pra bater com o board sem squiggle na tela.
+function drawLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number): void {
   ctx.beginPath();
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const off = i === 0 || i === segments ? 0 : jitter(key * 31 + i) * wobble;
-    const px = x1 + dx * t + nx * off;
-    const py = y1 + dy * t + ny * off;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
   ctx.stroke();
 }
 
@@ -103,18 +70,17 @@ function drawGrid(
   size: number,
   width: number,
   color: string,
-  jitter: Jitter,
-  key: number,
 ): void {
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.lineCap = 'round';
-  const wobble = Math.max(1, size * 0.006);
-  let k = key;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = Math.max(2, width * 1.4);
   for (const t of [1 / 3, 2 / 3]) {
-    handLine(ctx, x0 + size * t, y0 + size * 0.02, x0 + size * t, y0 + size * 0.98, wobble, jitter, k++);
-    handLine(ctx, x0 + size * 0.02, y0 + size * t, x0 + size * 0.98, y0 + size * t, wobble, jitter, k++);
+    drawLine(ctx, x0 + size * t, y0 + size * 0.02, x0 + size * t, y0 + size * 0.98);
+    drawLine(ctx, x0 + size * 0.02, y0 + size * t, x0 + size * 0.98, y0 + size * t);
   }
+  ctx.shadowBlur = 0;
 }
 
 // Risco na linha vencedora, com a mesma extrapolação da tela (REQ-RISCO-06).
@@ -127,8 +93,6 @@ function drawStrikes(
   size: number,
   color: string,
   width: number,
-  jitter: Jitter,
-  key: number,
   alpha = 1,
 ): void {
   const lines = winningLines(board, tiebreak);
@@ -137,9 +101,11 @@ function drawStrikes(
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.lineCap = 'round';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = Math.max(3, width * 1.6);
   const cell = size / 3;
   const overshoot = cell * 0.22;
-  lines.forEach((line, i) => {
+  for (const line of lines) {
     const first = line[0];
     const last = line[line.length - 1];
     const ax = x0 + ((first % 3) + 0.5) * cell;
@@ -149,40 +115,25 @@ function drawStrikes(
     const dx = bx - ax;
     const dy = by - ay;
     const len = Math.hypot(dx, dy) || 1;
-    handLine(
+    drawLine(
       ctx,
       ax - (dx / len) * overshoot,
       ay - (dy / len) * overshoot,
       bx + (dx / len) * overshoot,
       by + (dy / len) * overshoot,
-      size * 0.008,
-      jitter,
-      key + i * 17,
     );
-  });
+  }
   ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
 }
 
-export function drawState(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  palette: GifPalette,
-  jitter: Jitter = makeJitter(1),
-): void {
+export function drawState(ctx: CanvasRenderingContext2D, state: GameState, palette: GifPalette): void {
   const size = GIF_SIZE;
   const { tiebreak } = state.config;
 
-  // Fundo do tema: papel pautado ou lousa (REQ-REPLAY2-01).
+  // Fundo do tema neon-galáctico (REQ-NEON-08).
   ctx.fillStyle = palette.bg;
   ctx.fillRect(0, 0, size, size);
-  ctx.strokeStyle = palette.ruled;
-  ctx.lineWidth = 1;
-  for (let y = 28; y < size; y += 28) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(size, y);
-    ctx.stroke();
-  }
 
   const margin = size * 0.04;
   const boardSize = size - margin * 2;
@@ -190,8 +141,8 @@ export function drawState(
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const cellFont = `bold ${Math.round(boardSize / 12)}px "Patrick Hand", cursive`;
-  const bigFont = `bold ${Math.round(boardSize / 5)}px "Caveat", "Patrick Hand", cursive`;
+  const cellFont = `600 ${Math.round(boardSize / 12)}px "Rajdhani", sans-serif`;
+  const bigFont = `800 ${Math.round(boardSize / 5)}px "Orbitron", "Rajdhani", sans-serif`;
 
   for (let b = 0; b < 9; b++) {
     const sub = getNode(state.board, [b]);
@@ -206,17 +157,20 @@ export function drawState(
     // Mesmos pesos da tela: no tabuleirinho conquistado a marca grande é a
     // protagonista, com jogadas e risco de fundo.
     ctx.globalAlpha = struck ? 0.4 : decided !== null ? 0.3 : 1;
-    drawGrid(ctx, sx + inner, sy + inner, innerSize, 2, palette.lineSoft, jitter, b * 40 + 7);
+    drawGrid(ctx, sx + inner, sy + inner, innerSize, 2, palette.lineSoft);
     ctx.font = cellFont;
     for (let c = 0; c < 9; c++) {
       const value = (sub as Board).cells[c];
       if (value !== 'X' && value !== 'O') continue;
       ctx.fillStyle = value === 'X' ? palette.x : palette.o;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 4;
       ctx.fillText(
         value,
         sx + inner + ((c % 3) + 0.5) * (innerSize / 3),
         sy + inner + (Math.floor(c / 3) + 0.55) * (innerSize / 3),
       );
+      ctx.shadowBlur = 0;
     }
     ctx.globalAlpha = 1;
 
@@ -225,7 +179,10 @@ export function drawState(
       ctx.font = bigFont;
       ctx.fillStyle =
         decided === 'X' ? palette.x : decided === 'O' ? palette.o : palette.line;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 10;
       ctx.fillText(decided === 'draw' ? '=' : decided, sx + subSize / 2, sy + subSize * 0.56);
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
 
@@ -238,14 +195,12 @@ export function drawState(
       innerSize,
       decided === 'X' ? palette.x : palette.o,
       Math.max(3, size * 0.008),
-      jitter,
-      b * 40 + 21,
       0.45,
     );
   }
 
   // Grade do jogo grande por cima, como na tela.
-  drawGrid(ctx, margin, margin, boardSize, Math.max(4, size * 0.011), palette.line, jitter, 3);
+  drawGrid(ctx, margin, margin, boardSize, Math.max(4, size * 0.011), palette.line);
 
   const winner = resultOf(state.board, tiebreak);
   drawStrikes(
@@ -257,18 +212,16 @@ export function drawState(
     boardSize,
     winner === 'X' ? palette.x : palette.o,
     Math.max(5, size * 0.016),
-    jitter,
-    997,
   );
 }
 
-// A fonte manuscrita precisa estar carregada antes do primeiro quadro, senão o
+// A fonte do tema precisa estar carregada antes do primeiro quadro, senão o
 // canvas desenha com a fonte padrão do sistema (REQ-REPLAY2-03).
 async function ensureFonts(): Promise<void> {
   try {
     await Promise.all([
-      document.fonts.load('bold 40px "Patrick Hand"'),
-      document.fonts.load('bold 80px "Caveat"'),
+      document.fonts.load('600 40px "Rajdhani"'),
+      document.fonts.load('800 80px "Orbitron"'),
     ]);
   } catch {
     // fonte indisponível: segue com a reserva, sem travar o download
@@ -294,12 +247,10 @@ export async function generateGif(
   canvas.height = GIF_SIZE;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const palette = themePalette();
-  // Semente estável por partida: o tremor não muda entre quadros.
-  const jitter = makeJitter(entry.moves.length * 13 + 7);
 
   // 1ª passada: desenha e guarda os pixels de cada quadro.
   const rendered: ImageData[] = frames.map((frame) => {
-    drawState(ctx, frame.state, palette, jitter);
+    drawState(ctx, frame.state, palette);
     return ctx.getImageData(0, 0, GIF_SIZE, GIF_SIZE);
   });
 

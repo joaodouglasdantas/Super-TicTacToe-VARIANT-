@@ -1,11 +1,12 @@
-/* Temas: claro estilo caderno, escuro estilo lousa (direção visual da spec STT). */
+/* Tema neon-galáctico único (spec NEON): fundo sempre escuro, brilho neon,
+   substitui os antigos temas caderno/lousa e a alternância entre eles. */
 
 :root {
-  --font-hand: 'Patrick Hand', 'Comic Sans MS', cursive;
-  --font-title: 'Caveat', 'Patrick Hand', cursive;
-  /* Fonte sem ambiguidade pro código da sala (spec MENU): em letra de mão,
-     O/0, I/l/1 ficam parecidos demais pra algo que precisa ser digitado
-     certo por outra pessoa. */
+  --font-title: 'Orbitron', 'Rajdhani', sans-serif;
+  --font-body: 'Rajdhani', 'Segoe UI', sans-serif;
+  /* Fonte sem ambiguidade pro código da sala (spec MENU): O/0 e I/l/1 não
+     podem ficar parecidos, já que outra pessoa precisa digitar certo. Já
+     combinava com o tema técnico antes de virar neon; sem mudança aqui. */
   --font-code: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
 
   /* Um raio, uma altura de controle pra tudo (botão, campo, seletor):
@@ -16,40 +17,23 @@
   --radius: 12px;
   --control-h: 3rem;
   --mode-h: 4.6rem;
-}
 
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: #faf6ec;
-  --ruled-line: rgba(116, 160, 204, 0.35);
-  --ink: #22335c;
-  --ink-soft: #56679b;
-  --line: #22335c;
-  --line-soft: rgba(34, 51, 92, 0.4);
-  --card-bg: rgba(255, 255, 255, 0.55);
-  --mark-x: #c0392b;
-  --mark-o: #1f5fa8;
-  --accent: var(--mark-o);
-  /* Mesma duração que o som do risco (clipe ÷ velocidade de reprodução em
-     src/audio/sound.ts), pro traço desenhado acompanhar o traço ouvido. */
-  --strike-dur-small: 0.24s;
-  --strike-dur-big: 0.347s;
-}
-
-:root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #2b3b34;
-  --ruled-line: rgba(255, 255, 255, 0.05);
-  --ink: #f0eee2;
-  --ink-soft: #b8c4b4;
-  --line: #e8e6d8;
-  --line-soft: rgba(232, 230, 216, 0.45);
-  --card-bg: rgba(255, 255, 255, 0.06);
-  --mark-x: #ffd77a;
-  --mark-o: #9fd8ff;
+  --bg: #07041c;
+  --ink: #eef0ff;
+  --ink-soft: #9aa3d6;
+  --line: #8f6bff;
+  --line-soft: rgba(143, 107, 255, 0.38);
+  --card-bg: rgba(19, 14, 46, 0.55);
+  --mark-x: #ff3ec8;
+  --mark-o: #29e0ff;
   --accent: var(--mark-o);
-  --strike-dur-small: 0.391s;
-  --strike-dur-big: 0.566s;
+  --glow-soft: 0 0 4px currentColor, 0 0 10px currentColor;
+  --glow-strong: 0 0 6px currentColor, 0 0 16px currentColor, 0 0 32px currentColor;
+  /* Mesma duração que o som daquele risco (clipe ÷ velocidade de reprodução
+     em src/audio/sound.ts), pro traço desenhado acompanhar o traço ouvido. */
+  --strike-dur-small: 0.382s;
+  --strike-dur-big: 0.553s;
 }
 
 * {
@@ -58,20 +42,21 @@
 
 body {
   margin: 0;
-  font-family: var(--font-hand);
+  font-family: var(--font-body);
   font-size: 18px;
   color: var(--ink);
   background-color: var(--bg);
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent 27px,
-    var(--ruled-line) 27px,
-    var(--ruled-line) 28px
-  );
+  background-image:
+    radial-gradient(ellipse 60% 40% at 18% 12%, rgba(255, 62, 200, 0.18), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 8%, rgba(41, 224, 255, 0.15), transparent 60%),
+    radial-gradient(ellipse 75% 60% at 50% 105%, rgba(143, 107, 255, 0.22), transparent 60%);
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
 .app {
+  position: relative;
+  z-index: 1;
   max-width: 900px;
   margin: 0 auto;
   padding: 0.5rem 1rem 2rem;
@@ -87,14 +72,21 @@ header {
 
 h1 {
   font-family: var(--font-title);
-  font-size: clamp(2.2rem, 6vw, 3.2rem);
+  font-size: clamp(1.8rem, 5.5vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   margin: 0.5rem 0;
-  transform: rotate(-1.5deg);
+  color: var(--ink);
+  text-shadow:
+    0 0 6px var(--mark-o),
+    0 0 18px rgba(41, 224, 255, 0.5),
+    0 0 34px rgba(143, 107, 255, 0.35);
 }
 
 h2,
 h3 {
   font-family: var(--font-title);
+  letter-spacing: 0.02em;
   margin: 0.4rem 0;
 }
 
@@ -116,7 +108,7 @@ h3 {
 }
 
 /* Barrinha deslizante genérica, reaproveitada por qualquer liga/desliga
-   (tema, som): só o ícone muda por subclasse. O checkbox "comum" (variante
+   (hoje só som): só o ícone muda por subclasse. O checkbox "comum" (variante
    de limpeza) tem sua própria classe (.checkbox-plain) em vez de estilizar
    por [type='checkbox'], assim os dois nunca competem em especificidade
    nem dependem de que regra vem depois no arquivo. */
@@ -148,14 +140,6 @@ h3 {
   transform: translateX(25px);
 }
 
-/* Tema: desligado = caderno (sol), ligado = lousa (lua). */
-.theme-switch input::after {
-  content: '☀️';
-}
-.theme-switch input:checked::after {
-  content: '🌙';
-}
-
 /* Som: desligado = som ligado (alto-falante), ligado = mudo. */
 .sound-switch input::after {
   content: '🔊';
@@ -171,7 +155,7 @@ input {
   -webkit-appearance: none;
   -moz-appearance: none;
   box-sizing: border-box;
-  font-family: var(--font-hand);
+  font-family: var(--font-body);
   font-size: 1rem;
   color: var(--ink);
   background: var(--card-bg);
@@ -180,6 +164,8 @@ input {
   padding: 0.35rem 0.8rem;
   min-height: var(--control-h);
   cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 input {
@@ -187,7 +173,7 @@ input {
 }
 
 button:hover:not(:disabled) {
-  transform: rotate(-1deg) scale(1.03);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--line) 65%, transparent);
 }
 
 button:disabled {
@@ -199,9 +185,10 @@ button:disabled {
    ganha um preenchimento com a cor de destaque e peso de fonte, senão a
    borda mais grossa por si só já quebrava o padrão visual entre botões. */
 button.primary {
-  font-weight: bold;
-  background: color-mix(in srgb, var(--accent) 15%, var(--card-bg));
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 18%, var(--card-bg));
   border-color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 button.ghost {
@@ -209,8 +196,7 @@ button.ghost {
 }
 
 /* Anel de foco só quando faz sentido (navegação por teclado); clique de
-   mouse não deixa a marca de foco do navegador pra trás, feio e sem
-   relação com o traço desenhado à mão do resto da interface. */
+   mouse não deixa a marca de foco do navegador pra trás. */
 button:focus,
 select:focus,
 input:focus {
@@ -269,6 +255,8 @@ input:focus-visible {
   border-radius: var(--radius);
   padding: 1rem;
   margin: 1rem 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .setup {
@@ -432,18 +420,17 @@ input:focus-visible {
   min-height: 1.6em;
 }
 
-/* O tabuleiro é uma grade única desenhada com traços, como no papel:
-   linhas grossas formam o jogo da velha grande, linhas finas os pequenos.
-   O filtro #squiggle (SVG no App) dá o tremor de caneta/giz. */
+/* O tabuleiro é uma grade única desenhada com traços, linhas grossas formam
+   o jogo da velha grande, linhas finas os pequenos. */
 
 .macro-board {
   position: relative;
   width: min(92vw, 560px);
-  filter: url(#squiggle);
 }
 
 /* As 4 linhas de cada jogo da velha são traços contínuos pintados como
-   fundo do grid (não bordas por célula), pra não haver emenda nos cruzamentos. */
+   fundo do grid (não bordas por célula), pra não haver emenda nos cruzamentos.
+   No tabuleiro grande a grade ganha um leve brilho neon (REQ-NEON-03). */
 
 .macro-board > .board-grid {
   display: grid;
@@ -463,6 +450,7 @@ input:focus-visible {
     66.66% 0,
     0 33.33%,
     0 66.66%;
+  filter: drop-shadow(0 0 4px var(--line)) drop-shadow(0 0 10px rgba(143, 107, 255, 0.55));
 }
 
 .mini-board {
@@ -492,6 +480,7 @@ input:focus-visible {
   stroke: currentColor;
   stroke-width: 0.08;
   stroke-linecap: round;
+  filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px currentColor);
 }
 
 .macro-board > .strike-layer .strike {
@@ -575,8 +564,8 @@ input:focus-visible {
 }
 
 .cell:hover:not(:disabled) {
-  transform: none;
-  background: color-mix(in srgb, var(--turn-color, var(--ink)) 10%, transparent);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--turn-color, var(--ink)) 14%, transparent);
 }
 
 .cell:disabled {
@@ -599,7 +588,7 @@ input:focus-visible {
 }
 
 .mini-board.playable {
-  background: color-mix(in srgb, var(--turn-color) 11%, transparent);
+  background: color-mix(in srgb, var(--turn-color) 12%, transparent);
   outline: 2px dashed var(--turn-color);
   outline-offset: -5px;
 }
@@ -615,7 +604,7 @@ input:focus-visible {
 }
 
 .mini-board.struck > .strike-layer .strike {
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .mini-board.struck > .board-result {
@@ -641,10 +630,12 @@ input:focus-visible {
 
 .mark-X {
   color: var(--mark-x);
+  text-shadow: var(--glow-soft);
 }
 
 .mark-O {
   color: var(--mark-o);
+  text-shadow: var(--glow-soft);
 }
 
 /* Painéis */
@@ -696,6 +687,8 @@ input:focus-visible {
   font-weight: 700;
   letter-spacing: 0.3em;
   margin: 0.3rem 0;
+  color: var(--accent);
+  text-shadow: var(--glow-soft);
 }
 
 /* Pedido de desfazer: fixo no topo da tela, acima de tudo, mas sem
@@ -711,7 +704,7 @@ input:focus-visible {
   background: var(--bg);
   border-color: var(--accent);
   border-width: 3px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
   max-width: min(92vw, 420px);
   text-align: center;
 }
@@ -820,12 +813,12 @@ input:focus-visible {
   }
 }
 
-/* Modal de informações: sobre o jogo, link do repositório e créditos de som. */
+/* Modal de informações: sobre o jogo, link do repositório. */
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(2, 0, 10, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -834,8 +827,8 @@ input:focus-visible {
 }
 
 .modal-card {
-  /* .card usa --card-bg translúcido, pensado pra flutuar sobre o papel
-     pautado; empilhado com o fundo escurecido do modal isso ficava com uma
+  /* .card usa --card-bg translúcido, pensado pra flutuar sobre o fundo do
+     jogo; empilhado com o fundo escurecido do modal isso ficava com uma
      transparência dupla, ilegível. O modal precisa de superfície opaca. */
   background: var(--bg);
   max-width: 420px;
@@ -861,4 +854,142 @@ input:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
+}
+
+/* ---- Fundo decorativo neon-galáctico (spec NEON): estrelas, partículas de
+   luz e criaturinhas. Camada só visual, atrás do conteúdo (RN-NEON-02: o
+   componente já marca pointer-events:none e aria-hidden). ---- */
+
+.cosmic-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cosmic-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #eaf3ff;
+  box-shadow: 0 0 4px 1px rgba(234, 243, 255, 0.9);
+  animation-name: cosmic-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes cosmic-twinkle {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.95;
+  }
+}
+
+.cosmic-particle-wrap {
+  position: absolute;
+  bottom: 0;
+  height: 0;
+}
+
+.cosmic-particle {
+  position: absolute;
+  bottom: 0;
+  border-radius: 50%;
+  background: var(--mark-o);
+  box-shadow: 0 0 6px 2px var(--mark-o);
+  animation-name: cosmic-float;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.cosmic-particle.alt {
+  background: var(--mark-x);
+  box-shadow: 0 0 6px 2px var(--mark-x);
+}
+
+@keyframes cosmic-float {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  88% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-105vh);
+    opacity: 0;
+  }
+}
+
+.cosmic-creature {
+  position: absolute;
+  left: -15%;
+  opacity: 0.55;
+  animation-name: cosmic-drift-ltr, cosmic-bob;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  animation-direction: normal, alternate;
+}
+
+.cosmic-creature.reverse {
+  left: 115%;
+  animation-name: cosmic-drift-rtl, cosmic-bob;
+}
+
+.cosmic-creature-shape {
+  display: block;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.cosmic-creature-shape svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes cosmic-drift-ltr {
+  from {
+    left: -15%;
+  }
+  to {
+    left: 115%;
+  }
+}
+
+@keyframes cosmic-drift-rtl {
+  from {
+    left: 115%;
+  }
+  to {
+    left: -15%;
+  }
+}
+
+@keyframes cosmic-bob {
+  from {
+    transform: translateY(-10px);
+  }
+  to {
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cosmic-star,
+  .cosmic-particle,
+  .cosmic-creature {
+    animation: none;
+  }
+  .cosmic-star {
+    opacity: 0.5;
+  }
+  .cosmic-particle-wrap {
+    display: none;
+  }
 }

@@ -19,6 +19,7 @@ import type { SavedOnline } from '../storage/persist';
 import { addToLibrary, removeFromLibrary } from '../replay/library';
 import type { LibraryEntry } from '../replay/library';
 import { normalizeRoomCode } from '../p2p/protocol';
+import { CosmicBackground } from './CosmicBackground';
 import { LibraryScreen } from './LibraryScreen';
 import { OnlineGame } from './OnlineGame';
 import type { OnlineInit } from './OnlineGame';
@@ -43,10 +44,6 @@ function botSymbol(mode: MatchMode): Player | null {
 }
 
 const zeroScore: SessionScore = { X: 0, O: 0, draws: 0 };
-
-function systemTheme(): 'light' | 'dark' {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
 
 export function App() {
   const [prefs, setPrefs] = useState<Preferences>(() => loadPreferences());
@@ -78,16 +75,14 @@ export function App() {
 
   const language: Language = prefs.language ?? detectLanguage();
   const msgs = messages[language];
-  const theme = prefs.theme === 'system' ? systemTheme() : prefs.theme;
 
   useEffect(() => {
     setMuted(prefs.muted);
   }, [prefs.muted]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
     document.documentElement.lang = language === 'pt' ? 'pt-BR' : 'en';
-  }, [theme, language]);
+  }, [language]);
 
   useEffect(() => {
     if (!infoOpen && !settingsOpen) return;
@@ -150,7 +145,7 @@ export function App() {
 
   // REQ-SOM-01, 05, 09: toda marca que aparece no tabuleiro soa, venha de quem vier.
   function playTransition(before: GameState, after: GameState) {
-    playMoveSounds(soundsForTransition(before, after), theme);
+    playMoveSounds(soundsForTransition(before, after));
   }
 
   // Nomes de exibição por símbolo, resolvidos no momento do salvamento.
@@ -310,13 +305,7 @@ export function App() {
 
   return (
     <div className="app">
-      {/* Filtro que dá o tremor de traço à mão ao tabuleiro (caneta/giz). */}
-      <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
-        <filter id="squiggle">
-          <feTurbulence baseFrequency="0.02" numOctaves="3" seed="2" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" />
-        </filter>
-      </svg>
+      <CosmicBackground />
       <header>
         <h1>{msgs.appTitle}</h1>
         <div className="header-controls">
@@ -356,7 +345,7 @@ export function App() {
       </header>
 
       {replayEntry !== null && (
-        <ReplayScreen msgs={msgs} entry={replayEntry} theme={theme} onBack={() => setReplayEntry(null)} />
+        <ReplayScreen msgs={msgs} entry={replayEntry} onBack={() => setReplayEntry(null)} />
       )}
 
       {replayEntry === null && libraryOpen && !online && (
@@ -372,7 +361,6 @@ export function App() {
         <OnlineGame
           msgs={msgs}
           init={online}
-          theme={theme}
           onExit={() => {
             setOnline(null);
             setPendingOnline(null);
@@ -532,18 +520,6 @@ export function App() {
                 </select>
               </label>
               <label className="settings-row">
-                {msgs.theme}: {theme === 'dark' ? msgs.themeDark : msgs.themeLight}
-                <span className="switch theme-switch">
-                  <input
-                    type="checkbox"
-                    data-testid="theme-toggle"
-                    aria-label={msgs.theme}
-                    checked={theme === 'dark'}
-                    onChange={(e) => updatePrefs({ theme: e.target.checked ? 'dark' : 'light' })}
-                  />
-                </span>
-              </label>
-              <label className="settings-row">
                 {prefs.muted ? msgs.soundOff : msgs.soundOn}
                 <span className="switch sound-switch">
                   <input
@@ -586,9 +562,6 @@ export function App() {
                 {msgs.infoRepoLabel}
               </a>
             </p>
-            <h3>{msgs.infoSoundCreditsTitle}</h3>
-            {/* RN-SOM-03: as gravações de som têm licença de atribuição. */}
-            <p data-testid="sound-credits">{msgs.soundCredits}</p>
             <div className="controls">
               <button
                 type="button"

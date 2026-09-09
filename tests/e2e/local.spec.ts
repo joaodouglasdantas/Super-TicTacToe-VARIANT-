@@ -109,8 +109,8 @@ test('animação do risco dura o mesmo tempo que o som (grande mais longo que pe
     .first()
     .evaluate((el) => getComputedStyle(el).animationDuration);
 
-  expect(smallDur).toBe('0.24s');
-  expect(bigDur).toBe('0.347s');
+  expect(smallDur).toBe('0.382s');
+  expect(bigDur).toBe('0.553s');
 });
 
 test('histórico registra as jogadas (REQ-STT-10)', async ({ page }) => {

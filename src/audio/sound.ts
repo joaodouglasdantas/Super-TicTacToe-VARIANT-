@@ -1,16 +1,17 @@
-// Som de escrita (spec SOM), a partir de duas gravações reais bem curtas.
+// Som de jogada (spec SOM, redesenhado pela spec NEON): blips e acordes
+// curtos sintetizados por código, sem depender de gravação nem de rede.
 //
-// Histórico da busca pelo som certo (2026-09-03): três rodadas de síntese não
-// convenceram (estalo, depois explosão, depois formato correto mas sem
-// caráter). A troca por gravação real também não convenceu de início: os
-// clipes vinham de janelas de rabisco contínuo, e soavam como raspar sem
-// parar. O que funcionou foi isolar o menor toque distinto que existia em
-// cada gravação, um clipe só por tema, e construir todos os eventos (as duas
-// pernas do X, o O, os dois riscos) variando a velocidade de reprodução
-// desse único toque: mais rápido e agudo pro X, mais lento e grave pros
-// riscos. Ver Notas Técnicas da spec SOM pro relato completo.
+// A spec SOM original (giz/lápis) tentou e rejeitou síntese três vezes,
+// porque o alvo era imitar um som físico (o guincho de giz é um fenômeno de
+// stick-slip, difícil de emular por osciladores). RN-NEON-01 revê essa
+// decisão só para o timbre novo: um blip/chime de interface é um som
+// nativamente eletrônico, não existe "gravação real" dele — ver seção 8 de
+// `.specs/SOM/spec.md` e as Notas Técnicas de `.specs/NEON/spec.md`.
+//
+// A fila serial e a tabela de velocidade por evento (herdadas da spec SOM)
+// continuam intactas: é o que garante que jogadas em sequência não se
+// atropelam (RN-SOM-07, 10) e que desfazer não toca nada (RN-SOM-05).
 
-export type Theme = 'light' | 'dark';
 export type Mark = 'X' | 'O';
 export type StrikeScale = 'small' | 'big';
 
@@ -53,16 +54,29 @@ function ensureContext(): AudioContext | null {
   }
 }
 
-// Um clipe só por tema: o menor toque isolado de cada gravação (RN-SOM-03).
-const CLIP_FILES: Record<Theme, string> = { light: 'pencil.mp3', dark: 'chalk.mp3' };
-const CLIP_DURATION_S: Record<Theme, number> = { light: 0.132, dark: 0.215 };
+// Duas "vozes" sintetizadas (REQ-NEON-07), no lugar dos dois clipes gravados
+// (giz/lápis) de antes: `move` é um blip curto e redondo pra marca de uma
+// jogada, `strike` é um mini-acorde de duas notas ascendentes, mais quente,
+// pros riscos de vitória.
+type Voice = 'move' | 'strike';
+
+const VOICE_DURATION_S: Record<Voice, number> = { move: 0.13, strike: 0.21 };
+
+// Qual voz cada evento usa — x/o soam a marca sendo escrita, small/big soam
+// o risco que ela abriu.
+const EVENT_VOICE: Record<'x' | 'o' | 'small' | 'big', Voice> = {
+  x: 'move',
+  o: 'move',
+  small: 'strike',
+  big: 'strike',
+};
 
 // Velocidade de reprodução por evento: mais rápido e agudo pro toque curto do
 // X, mais devagar e grave pros riscos, como um gesto maior. A duração efetiva
-// (usada pra reservar vaga na fila) é a duração do clipe dividida pela taxa.
-// As taxas `small.base` e `big.base` também definem, via CLIP_DURATION_S,
-// quanto tempo a animação do traço do risco leva na tela (--strike-dur-small
-// e --strike-dur-big em themes.css): mudou a taxa aqui, recalcula lá.
+// (usada pra reservar vaga na fila) é a duração da voz dividida pela taxa.
+// `small.base`/`big.base` também definem, via VOICE_DURATION_S.strike, quanto
+// tempo a animação do traço do risco leva na tela (--strike-dur-small e
+// --strike-dur-big em themes.css): mudou a taxa ou a duração aqui, recalcula lá.
 const RATE: Record<'x' | 'o' | 'small' | 'big', { base: number; jitter: number; gain: number }> = {
   x: { base: 0.97, jitter: 0.07, gain: 0.85 },
   o: { base: 0.82, jitter: 0.06, gain: 0.8 },
@@ -70,31 +84,56 @@ const RATE: Record<'x' | 'o' | 'small' | 'big', { base: number; jitter: number; 
   big: { base: 0.38, jitter: 0.04, gain: 0.95 },
 };
 
-const bufferCache = new Map<string, Promise<AudioBuffer | null>>();
-
-function clipUrl(file: string): string {
-  // import.meta.env.BASE_URL respeita o VITE_BASE do deploy (subpasta do
-  // GitHub Pages); sem isso os clipes 404ariam em produção.
-  return `${import.meta.env.BASE_URL}sounds/${file}`;
+// Envelope percussivo curto (ataque rápido, decaimento suave): a mesma forma
+// usada pra todo toque sintetizado, só muda frequência e duração da nota.
+function pluckEnvelope(tRel: number, dur: number): number {
+  if (tRel < 0 || tRel > dur) return 0;
+  const attack = Math.min(0.006, dur * 0.2);
+  if (tRel < attack) return tRel / attack;
+  const decayRate = 3.5 / Math.max(dur - attack, 0.01);
+  return Math.exp(-(tRel - attack) * decayRate);
 }
 
-async function loadClip(ctx: AudioContext, file: string): Promise<AudioBuffer | null> {
-  const key = `${ctx.sampleRate}:${file}`;
-  let pending = bufferCache.get(key);
-  if (!pending) {
-    pending = (async () => {
-      try {
-        const response = await fetch(clipUrl(file));
-        if (!response.ok) return null;
-        const bytes = await response.arrayBuffer();
-        return await ctx.decodeAudioData(bytes);
-      } catch {
-        return null;
-      }
-    })();
-    bufferCache.set(key, pending);
+// Uma nota: fundamental + um toque de segundo harmônico, pra não soar como
+// bipe seco de 8-bit (alvo é "satisfatório e lofi", não sci-fi áspero).
+function note(tRel: number, dur: number, freq: number): number {
+  const env = pluckEnvelope(tRel, dur);
+  if (env === 0) return 0;
+  return env * (Math.sin(2 * Math.PI * freq * tRel) + 0.22 * Math.sin(4 * Math.PI * freq * tRel));
+}
+
+// `move`: um único toque redondo (E5). `strike`: duas notas ascendentes
+// (C5 → E5, terça maior), o "ding-ding" de conquista.
+function synthesizeSample(voice: Voice, t: number, duration: number): number {
+  if (voice === 'move') {
+    return note(t, duration, 659.25) * 0.75;
   }
-  return pending;
+  const firstDur = duration * 0.38;
+  const secondDur = duration - firstDur;
+  return (note(t, firstDur, 523.25) + note(t - firstDur, secondDur, 659.25)) * 0.6;
+}
+
+function synthesizeBuffer(ctx: AudioContext, voice: Voice): AudioBuffer {
+  const duration = VOICE_DURATION_S[voice];
+  const length = Math.max(1, Math.round(duration * ctx.sampleRate));
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    data[i] = synthesizeSample(voice, i / ctx.sampleRate, duration);
+  }
+  return buffer;
+}
+
+const bufferCache = new Map<string, AudioBuffer>();
+
+function getVoiceBuffer(ctx: AudioContext, voice: Voice): AudioBuffer {
+  const key = `${ctx.sampleRate}:${voice}`;
+  let buffer = bufferCache.get(key);
+  if (!buffer) {
+    buffer = synthesizeBuffer(ctx, voice);
+    bufferCache.set(key, buffer);
+  }
+  return buffer;
 }
 
 // Fila serial (RN-SOM-07, 10): sem ela, a marca do bot toca por cima da sua
@@ -131,35 +170,24 @@ function currentBacklogS(ctx: AudioContext): number {
   return queueFreeAt - now;
 }
 
-// Toca o toque do tema, esticado pra virar o evento pedido (x, o ou risco),
+// Toca a voz do evento, esticada pra virar o toque pedido (x, o ou risco),
 // na vaga já reservada na fila serial.
-function playTouch(
-  ctx: AudioContext,
-  theme: Theme,
-  event: keyof typeof RATE,
-  start: number,
-): void {
-  void (async () => {
-    const buffer = await loadClip(ctx, CLIP_FILES[theme]);
-    if (buffer === null || muted) return;
+function playTouch(ctx: AudioContext, event: keyof typeof RATE, start: number): void {
+  const buffer = getVoiceBuffer(ctx, EVENT_VOICE[event]);
+  const { base, jitter, gain } = RATE[event];
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = base + (Math.random() * 2 - 1) * jitter;
 
-    const { base, jitter, gain } = RATE[event];
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.playbackRate.value = base + (Math.random() * 2 - 1) * jitter;
+  const envelope = ctx.createGain();
+  envelope.gain.value = gain * (0.9 + Math.random() * 0.2);
 
-    const envelope = ctx.createGain();
-    envelope.gain.value = gain * (0.9 + Math.random() * 0.2);
-
-    source.connect(envelope).connect(ctx.destination);
-    // Se o carregamento (primeira vez) demorou mais que a vaga reservada,
-    // toca assim que possível em vez de perder o som.
-    source.start(Math.max(start, ctx.currentTime + 0.003));
-  })();
+  source.connect(envelope).connect(ctx.destination);
+  source.start(Math.max(start, ctx.currentTime + 0.003));
 }
 
-function effectiveDuration(theme: Theme, event: keyof typeof RATE): number {
-  return CLIP_DURATION_S[theme] / RATE[event].base;
+function effectiveDuration(event: keyof typeof RATE): number {
+  return VOICE_DURATION_S[EVENT_VOICE[event]] / RATE[event].base;
 }
 
 // Toca a marca da jogada e os riscos que ela abriu (spec RISCO), tudo em
@@ -168,25 +196,25 @@ function effectiveDuration(theme: Theme, event: keyof typeof RATE): number {
 // (a mão tira o material da superfície); O é um toque único mais longo.
 // RN-SOM-08 (revista): o risco entra na fila logo após a marca, não mais
 // simultâneo a ela.
-export function playMoveSounds(sounds: import('./events').MoveSounds, theme: Theme): void {
+export function playMoveSounds(sounds: import('./events').MoveSounds): void {
   const ctx = ensureContext();
   if (ctx === null) return;
   try {
     if (currentBacklogS(ctx) > MAX_BACKLOG_S) return; // fila cheia: pula a jogada inteira
 
     if (sounds.mark === 'X') {
-      playTouch(ctx, theme, 'x', reserveSlot(effectiveDuration(theme, 'x')));
+      playTouch(ctx, 'x', reserveSlot(effectiveDuration('x')));
       // extraGap soma ao MIN_GAP que a reserva do primeiro toque já deixou
       // (reserveSlot sempre adiciona MIN_GAP_S no final): 0,05 aqui dá uma
       // pausa total de ~0,2s entre as pernas, um pouco maior que a folga
       // genérica entre sons de jogadas diferentes, sem exagerar.
-      playTouch(ctx, theme, 'x', reserveSlot(effectiveDuration(theme, 'x'), 0.05));
+      playTouch(ctx, 'x', reserveSlot(effectiveDuration('x'), 0.05));
     } else if (sounds.mark === 'O') {
-      playTouch(ctx, theme, 'o', reserveSlot(effectiveDuration(theme, 'o')));
+      playTouch(ctx, 'o', reserveSlot(effectiveDuration('o')));
     }
     for (const scale of sounds.strikes) {
       const event = scale === 'big' ? 'big' : 'small';
-      playTouch(ctx, theme, event, reserveSlot(effectiveDuration(theme, event)));
+      playTouch(ctx, event, reserveSlot(effectiveDuration(event)));
     }
   } catch {
     // áudio indisponível: segue em silêncio

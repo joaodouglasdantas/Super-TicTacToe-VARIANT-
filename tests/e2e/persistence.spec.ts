@@ -70,15 +70,3 @@ test('silenciar persiste entre sessões (REQ-SOM-04, AC-SOM-04)', async ({ page 
   await page.getByTestId('settings-open').click();
   await expect(page.getByTestId('mute-toggle')).toBeChecked();
 });
-
-test('alternância de tema persiste', async ({ page }) => {
-  await page.goto('/');
-  const initial = await page.evaluate(() => document.documentElement.dataset.theme);
-  await page.getByTestId('settings-open').click();
-  await page.getByTestId('theme-toggle').click();
-  const toggled = await page.evaluate(() => document.documentElement.dataset.theme);
-  expect(toggled).not.toBe(initial);
-  await page.reload();
-  const persisted = await page.evaluate(() => document.documentElement.dataset.theme);
-  expect(persisted).toBe(toggled);
-});

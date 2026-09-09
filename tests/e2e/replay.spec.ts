@@ -111,40 +111,30 @@ test('controles do replay são inequívocos (AC-REPLAY2-07, 08)', async ({ page 
   await expect(page.getByTestId('replay-counter')).toContainText('1 / 17');
 });
 
-test('quadro do GIF usa o fundo do tema (AC-REPLAY2-01, 02)', async ({ page }) => {
+test('quadro do GIF usa o fundo neon-galáctico (AC-REPLAY2-01, 02; REQ-NEON-08)', async ({ page }) => {
   await playFullMatch(page);
 
-  const sample = async () =>
-    page.evaluate(async () => {
-      // Caminhos servidos pelo Vite; ficam em variável porque o TypeScript
-      // não resolve import absoluto de navegador.
-      const gifPath = '/src/replay/gif.ts';
-      const enginePath = '/src/engine/index.ts';
-      const gif = (await import(/* @vite-ignore */ gifPath)) as typeof import('../../src/replay/gif');
-      const engine = (await import(/* @vite-ignore */ enginePath)) as typeof import('../../src/engine');
-      const saved = JSON.parse(localStorage.getItem('stt.library') ?? '[]')[0];
-      const state = engine.replay({ config: saved.config, moves: saved.moves });
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext('2d')!;
-      gif.drawState(ctx, state, gif.themePalette());
-      const [r, g, b] = ctx.getImageData(2, 2, 1, 1).data;
-      return { r, g, b };
-    });
+  const bg = await page.evaluate(async () => {
+    // Caminhos servidos pelo Vite; ficam em variável porque o TypeScript
+    // não resolve import absoluto de navegador.
+    const gifPath = '/src/replay/gif.ts';
+    const enginePath = '/src/engine/index.ts';
+    const gif = (await import(/* @vite-ignore */ gifPath)) as typeof import('../../src/replay/gif');
+    const engine = (await import(/* @vite-ignore */ enginePath)) as typeof import('../../src/engine');
+    const saved = JSON.parse(localStorage.getItem('stt.library') ?? '[]')[0];
+    const state = engine.replay({ config: saved.config, moves: saved.moves });
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    gif.drawState(ctx, state, gif.themePalette());
+    const [r, g, b] = ctx.getImageData(2, 2, 1, 1).data;
+    return { r, g, b };
+  });
 
-  // Tema claro: fundo de papel (creme claro).
-  const light = await sample();
-  expect(light.r).toBeGreaterThan(200);
-  expect(light.g).toBeGreaterThan(200);
-
-  // Tema escuro: fundo de lousa (escuro).
-  await page.getByTestId('settings-open').click();
-  await page.getByTestId('theme-toggle').click();
-  await page.getByTestId('settings-close').click();
-  const dark = await sample();
-  expect(dark.r).toBeLessThan(120);
-  expect(dark.g).toBeLessThan(120);
+  // Fundo quase preto/índigo do tema neon-galáctico, nunca claro.
+  expect(bg.r).toBeLessThan(60);
+  expect(bg.g).toBeLessThan(60);
 });
 
 test('GIF da partida é baixado no fim e no replay (AC-07)', async ({ page }) => {

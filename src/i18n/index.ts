@@ -5,9 +5,6 @@ export type Language = 'pt' | 'en';
 const pt = {
   appTitle: 'Super TicTacToe',
   language: 'Idioma',
-  theme: 'Tema',
-  themeLight: 'Caderno',
-  themeDark: 'Lousa',
   newGame: 'Nova partida',
   mode: 'Modo',
   localMode: 'Dois jogadores (local)',
@@ -111,21 +108,16 @@ const pt = {
   soundOff: 'Som desligado',
   leaveConfirm: 'Sair',
   keepPlaying: 'Continuar jogando',
-  soundCredits: 'Sons de escrita: gravações de Daniel Simion e Lisa Redfern (soundbible.com), com atribuição.',
   infoLabel: 'Informações',
   infoTitle: 'Super TicTacToe',
   infoDescription: 'Jogo da velha em tabuleiros aninhados, no navegador: local, contra o bot ou via web por código de sala.',
   infoRepoLabel: 'Código-fonte no GitHub',
-  infoSoundCreditsTitle: 'Créditos de som',
   infoClose: 'Fechar',
 };
 
 const en: typeof pt = {
   appTitle: 'Super TicTacToe',
   language: 'Language',
-  theme: 'Theme',
-  themeLight: 'Notebook',
-  themeDark: 'Chalkboard',
   newGame: 'New game',
   mode: 'Mode',
   localMode: 'Two players (local)',
@@ -229,12 +221,10 @@ const en: typeof pt = {
   soundOff: 'Sound off',
   leaveConfirm: 'Leave',
   keepPlaying: 'Keep playing',
-  soundCredits: 'Writing sounds: recordings by Daniel Simion and Lisa Redfern (soundbible.com), attribution required.',
   infoLabel: 'Information',
   infoTitle: 'Super TicTacToe',
   infoDescription: 'Ultimate tic-tac-toe in your browser: local, against the bot, or online by room code.',
   infoRepoLabel: 'Source code on GitHub',
-  infoSoundCreditsTitle: 'Sound credits',
   infoClose: 'Close',
 };
 

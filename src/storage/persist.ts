@@ -5,8 +5,6 @@ import type { GameConfig, Move, Player, SerializedGame } from '../engine';
 import type { Difficulty } from '../bot/bot';
 import type { Language } from '../i18n';
 
-export type ThemePreference = 'light' | 'dark' | 'system';
-
 // Modo da partida: local (dois humanos) ou contra o bot (REQ-STT-04, 05).
 export type MatchMode =
   | { type: 'local' }
@@ -14,7 +12,6 @@ export type MatchMode =
 
 export interface Preferences {
   language: Language | null;
-  theme: ThemePreference;
   playerNames: [string, string];
   player1Symbol: Player;
   lastConfig: GameConfig | null;
@@ -54,7 +51,6 @@ const ONLINE_KEY = 'stt.p2p';
 
 const defaultPreferences: Preferences = {
   language: null,
-  theme: 'system',
   playerNames: ['', ''],
   player1Symbol: 'X',
   lastConfig: null,

@@ -12,7 +12,6 @@ import { Ellipsis } from './Ellipsis';
 interface ReplayScreenProps {
   msgs: Messages;
   entry: LibraryEntry;
-  theme?: 'light' | 'dark';
   onBack: () => void;
 }
 
@@ -37,7 +36,7 @@ export async function downloadEntryGif(entry: LibraryEntry): Promise<void> {
 
 // Player de replay (REQ-REPLAY-03): somente leitura, estados derivados por
 // replay determinístico do motor (RN-REPLAY-02, 05).
-export function ReplayScreen({ msgs, entry, theme = 'light', onBack }: ReplayScreenProps) {
+export function ReplayScreen({ msgs, entry, onBack }: ReplayScreenProps) {
   const total = entry.moves.length;
   const [step, setStep] = useState(total);
   const [playing, setPlaying] = useState(false);
@@ -60,13 +59,13 @@ export function ReplayScreen({ msgs, entry, theme = 'light', onBack }: ReplayScr
         if (next !== s) {
           const before = replay({ config: entry.config, moves: entry.moves.slice(0, s) });
           const after = replay({ config: entry.config, moves: entry.moves.slice(0, next) });
-          playMoveSounds(soundsForTransition(before, after), theme);
+          playMoveSounds(soundsForTransition(before, after));
         }
         return next;
       });
     }, 800);
     return () => clearTimeout(timer);
-  }, [playing, step, total, entry, theme]);
+  }, [playing, step, total, entry]);
 
   const lastMove = step > 0 ? entry.moves[step - 1].path : null;
 
