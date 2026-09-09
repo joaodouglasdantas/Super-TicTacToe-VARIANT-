@@ -558,7 +558,11 @@ export function App() {
             <h2>{msgs.infoTitle}</h2>
             <p>{msgs.infoDescription}</p>
             <p>
-              <a href="https://github.com/BrennoKM/Super-TicTacToe" target="_blank" rel="noreferrer">
+              <a
+                href="https://github.com/joaodouglasdantas/Super-TicTacToe-VARIANT-"
+                target="_blank"
+                rel="noreferrer"
+              >
                 {msgs.infoRepoLabel}
               </a>
             </p>
