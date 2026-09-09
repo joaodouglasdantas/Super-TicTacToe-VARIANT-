@@ -97,7 +97,8 @@ h3 {
 }
 
 /* Botão de ícone quadrado, mesma altura/raio dos outros controles: usado
-   pra info, configurações e "colar código". */
+   pra info, configurações e "colar código". Ícone em SVG próprio (não
+   emoji do sistema), herdando a cor do texto e um leve brilho neon. */
 .icon-btn {
   width: var(--control-h);
   padding: 0;
@@ -107,11 +108,31 @@ h3 {
   flex-shrink: 0;
 }
 
+.icon-btn svg,
+.mode-btn .icon svg,
+.switch-thumb svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.mode-btn .icon svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
 /* Barrinha deslizante genérica, reaproveitada por qualquer liga/desliga
-   (hoje só som): só o ícone muda por subclasse. O checkbox "comum" (variante
-   de limpeza) tem sua própria classe (.checkbox-plain) em vez de estilizar
-   por [type='checkbox'], assim os dois nunca competem em especificidade
-   nem dependem de que regra vem depois no arquivo. */
+   (hoje só som): só o ícone muda por subclasse, renderizado como filho real
+   (.switch-thumb), não como conteúdo de pseudo-elemento — precisa ser SVG,
+   não dá pra trocar de cor/brilho um emoji vindo de `content`. O checkbox
+   "comum" (variante de limpeza) tem sua própria classe (.checkbox-plain) em
+   vez de estilizar por [type='checkbox'], assim os dois nunca competem em
+   especificidade nem dependem de que regra vem depois no arquivo. */
+.switch {
+  position: relative;
+  display: inline-flex;
+}
+
 .switch input {
   appearance: none;
   width: 54px;
@@ -126,26 +147,18 @@ h3 {
   cursor: pointer;
 }
 
-.switch input::after {
+.switch-thumb {
   position: absolute;
   top: 50%;
   left: 3px;
   translate: 0 -50%;
-  font-size: 15px;
   line-height: 1;
+  pointer-events: none;
   transition: transform 0.2s ease;
 }
 
-.switch input:checked::after {
+.switch input:checked ~ .switch-thumb {
   transform: translateX(25px);
-}
-
-/* Som: desligado = som ligado (alto-falante), ligado = mudo. */
-.sound-switch input::after {
-  content: '🔊';
-}
-.sound-switch input:checked::after {
-  content: '🔇';
 }
 
 button,
@@ -332,7 +345,8 @@ input:focus-visible {
 }
 
 .mode-btn .icon {
-  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
 }
 

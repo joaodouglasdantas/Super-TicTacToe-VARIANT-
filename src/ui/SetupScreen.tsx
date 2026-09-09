@@ -4,6 +4,7 @@ import type { GameConfig, Player, Tiebreak } from '../engine';
 import type { Messages } from '../i18n';
 import { generateRoomCode, normalizeRoomCode } from '../p2p/protocol';
 import type { MatchMode } from '../storage/persist';
+import { IconBot, IconCreateRoom, IconPaste, IconTwoPlayers } from './icons';
 import type { OnlineInit } from './OnlineGame';
 
 export interface MatchSetup {
@@ -142,7 +143,7 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
               onClick={pasteCode}
               data-testid="join-paste"
             >
-              📋
+              <IconPaste />
             </button>
             <button type="button" className="primary" onClick={submitJoinCode} data-testid="join-go">
               {msgs.enterBtn}
@@ -160,7 +161,9 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
             onClick={() => pickMode('online')}
             data-testid="mode-online"
           >
-            <span className="icon" aria-hidden="true">➕</span>
+            <span className="icon" aria-hidden="true">
+              <IconCreateRoom />
+            </span>
             <span className="label-group">
               <span className="title">{msgs.createRoom}</span>
               <span className="sub">{msgs.createRoomHint}</span>
@@ -173,7 +176,9 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
               onClick={() => pickMode('bot')}
               data-testid="mode-bot"
             >
-              <span className="icon" aria-hidden="true">🤖</span>
+              <span className="icon" aria-hidden="true">
+                <IconBot />
+              </span>
               <span className="label-group">
                 <span className="title">{msgs.onePlayer}</span>
                 <span className="sub">{msgs.botMode}</span>
@@ -185,7 +190,9 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
               onClick={() => pickMode('local')}
               data-testid="mode-local"
             >
-              <span className="icon" aria-hidden="true">👥</span>
+              <span className="icon" aria-hidden="true">
+                <IconTwoPlayers />
+              </span>
               <span className="label-group">
                 <span className="title">{msgs.twoPlayers}</span>
                 <span className="sub">{msgs.sameDevice}</span>

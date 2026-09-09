@@ -20,6 +20,7 @@ import { addToLibrary, removeFromLibrary } from '../replay/library';
 import type { LibraryEntry } from '../replay/library';
 import { normalizeRoomCode } from '../p2p/protocol';
 import { CosmicBackground } from './CosmicBackground';
+import { IconInfo, IconLibrary, IconSettings, IconSoundOff, IconSoundOn } from './icons';
 import { LibraryScreen } from './LibraryScreen';
 import { OnlineGame } from './OnlineGame';
 import type { OnlineInit } from './OnlineGame';
@@ -318,7 +319,7 @@ export function App() {
               aria-label={msgs.library}
               onClick={() => setLibraryOpen((open) => !open)}
             >
-              📚
+              <IconLibrary />
             </button>
           )}
           <button
@@ -329,7 +330,7 @@ export function App() {
             aria-label={msgs.infoLabel}
             onClick={() => setInfoOpen(true)}
           >
-            ℹ️
+            <IconInfo />
           </button>
           <button
             type="button"
@@ -339,7 +340,7 @@ export function App() {
             aria-label={msgs.settingsLabel}
             onClick={() => setSettingsOpen(true)}
           >
-            ⚙️
+            <IconSettings />
           </button>
         </div>
       </header>
@@ -529,6 +530,9 @@ export function App() {
                     checked={prefs.muted}
                     onChange={(e) => updatePrefs({ muted: e.target.checked })}
                   />
+                  <span className="switch-thumb" aria-hidden="true">
+                    {prefs.muted ? <IconSoundOff /> : <IconSoundOn />}
+                  </span>
                 </span>
               </label>
             </div>
