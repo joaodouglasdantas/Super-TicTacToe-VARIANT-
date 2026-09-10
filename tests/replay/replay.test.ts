@@ -43,6 +43,7 @@ function finishedMatch(): Omit<LibraryEntry, 'id' | 'finishedAt'> {
     config: classic,
     moves,
     result: 'X',
+    map: 'galaxy',
   };
 }
 

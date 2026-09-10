@@ -10,6 +10,8 @@ import {
 } from '../engine';
 import type { GameConfig, GameState, Move, Path, Player } from '../engine';
 import type { SessionScore } from '../storage/persist';
+import { normalizeMap } from '../theme/maps';
+import type { MapTheme } from '../theme/maps';
 import {
   decodeMessage,
   encodeMessage,
@@ -32,6 +34,7 @@ export interface SessionSnapshot {
   names: [string, string]; // [host, guest]
   hostSymbol: Player;
   phase: SessionPhase;
+  map: MapTheme; // spec MAPAS: sorteado pelo host, sincronizado pro guest
 }
 
 export interface SessionEvents {
@@ -47,7 +50,17 @@ export interface SessionInit {
   // Host de partida nova define; host/guest em retomada trazem o estado salvo.
   config?: GameConfig;
   hostSymbol?: Player;
-  saved?: { config: GameConfig; hostSymbol: Player; moves: Move[]; score: SessionScore; names: [string, string] };
+  // Sorteado por quem cria a partida nova (RN-MAPAS-03); sem valor, vira
+  // galáxia (normalizeMap). Guest de partida nova adota o que chega em 'config'.
+  map?: MapTheme;
+  saved?: {
+    config: GameConfig;
+    hostSymbol: Player;
+    moves: Move[];
+    score: SessionScore;
+    names: [string, string];
+    map: MapTheme;
+  };
   // Heartbeat (GAR-P2P-06): ping a cada heartbeatMs; sem tráfego por staleMs,
   // a conexão é dada como caída. heartbeatMs 0 desliga (usado em testes).
   heartbeatMs?: number;
@@ -62,6 +75,7 @@ export class P2PSession {
 
   private config: GameConfig | null = null;
   private hostSymbol: Player = 'X';
+  private map: MapTheme = 'galaxy';
   private names: [string, string];
   private state: GameState | null = null;
   private score: SessionScore = { X: 0, O: 0, draws: 0 };
@@ -81,6 +95,7 @@ export class P2PSession {
     if (init.saved) {
       this.config = init.saved.config;
       this.hostSymbol = init.saved.hostSymbol;
+      this.map = normalizeMap(init.saved.map);
       this.names = init.saved.names;
       this.score = init.saved.score;
       this.state = replay({ config: init.saved.config, moves: init.saved.moves });
@@ -90,6 +105,7 @@ export class P2PSession {
       }
       this.config = init.config;
       this.hostSymbol = init.hostSymbol;
+      this.map = normalizeMap(init.map); // RN-MAPAS-03: só quem cria sorteia
       this.state = createGame(init.config);
     }
 
@@ -136,6 +152,7 @@ export class P2PSession {
       names: this.names,
       hostSymbol: this.hostSymbol,
       phase: this.phase,
+      map: this.map,
     };
   }
 
@@ -241,6 +258,7 @@ export class P2PSession {
         config: this.config!,
         hostSymbol: this.hostSymbol,
         names: this.names,
+        map: this.map,
       });
     } else if (name) {
       this.names = [name, this.names[1]];
@@ -251,9 +269,10 @@ export class P2PSession {
   private onConfig(msg: Extract<P2PMessage, { t: 'config' }>): void {
     if (this.role !== 'guest') return;
     if (this.state === null) {
-      // Partida nova: adota a configuração do host.
+      // Partida nova: adota a configuração do host (RN-MAPAS-03, guest nunca sorteia).
       this.config = msg.config;
       this.hostSymbol = msg.hostSymbol;
+      this.map = normalizeMap(msg.map);
       this.state = createGame(msg.config);
     }
     // Retomada: mantém o estado local (config é imutável); só atualiza nomes.
@@ -306,6 +325,7 @@ export class P2PSession {
     if (theirState.moves.length > mine) {
       this.config = msg.config;
       this.hostSymbol = msg.hostSymbol;
+      this.map = normalizeMap(msg.map);
       this.names = [sanitizeName(msg.names[0]), sanitizeName(msg.names[1])];
       this.state = theirState;
       this.score = msg.score;
@@ -371,6 +391,7 @@ export class P2PSession {
       names: this.names,
       moves: this.state.moves,
       score: this.score,
+      map: this.map,
     });
   }
 

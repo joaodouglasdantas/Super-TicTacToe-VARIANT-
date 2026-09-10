@@ -19,9 +19,11 @@ import type { SavedOnline } from '../storage/persist';
 import { addToLibrary, removeFromLibrary } from '../replay/library';
 import type { LibraryEntry } from '../replay/library';
 import { normalizeRoomCode } from '../p2p/protocol';
-import { CosmicBackground } from './CosmicBackground';
+import { randomMapTheme } from '../theme/maps';
+import type { MapTheme } from '../theme/maps';
 import { IconInfo, IconLibrary, IconSettings, IconSoundOff, IconSoundOn } from './icons';
 import { LibraryScreen } from './LibraryScreen';
+import { MapBackground } from './MapBackground';
 import { PlanetBackground } from './PlanetBackground';
 import { OnlineGame } from './OnlineGame';
 import type { OnlineInit } from './OnlineGame';
@@ -39,6 +41,7 @@ interface Match {
   counted: boolean; // o resultado desta partida já entrou no placar?
   mode: MatchMode;
   libraryId: string | null; // entrada criada na biblioteca quando a partida terminou
+  map: MapTheme; // spec MAPAS: sorteado ao criar, mantido em revanche/retomada
 }
 
 function botSymbol(mode: MatchMode): Player | null {
@@ -58,6 +61,13 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [replayEntry, setReplayEntry] = useState<LibraryEntry | null>(null);
   const [leaveAsk, setLeaveAsk] = useState(false);
+  // Mapa da sessão online em andamento: o host já sabe o dele de cara
+  // (online.map); o guest só sabe depois do handshake (OnlineGame chama
+  // onMapChange quando a sessão informa, RN-MAPAS-03).
+  const [onlineMap, setOnlineMap] = useState<MapTheme>('galaxy');
+  useEffect(() => {
+    if (online) setOnlineMap(online.map ?? online.saved?.map ?? 'galaxy');
+  }, [online]);
 
   // REQ-MENU-05: um link de convite (?join=CODIGO) pula a home e vai direto
   // pra escolha de nome. Lido uma única vez; a URL é limpa em seguida pra
@@ -115,6 +125,7 @@ export function App() {
         player1Symbol: m.player1Symbol,
         score: m.score,
         mode: m.mode,
+        map: m.map,
       });
     } else {
       clearMatch();
@@ -142,6 +153,7 @@ export function App() {
       counted: false,
       mode: setup.mode,
       libraryId: null,
+      map: randomMapTheme(), // RN-MAPAS-03: quem cria a partida sorteia
     });
   }
 
@@ -172,6 +184,7 @@ export function App() {
       config: { ...state.config },
       moves: state.moves,
       result: state.result ?? 'draw',
+      map: m.map,
     };
   }
 
@@ -263,6 +276,7 @@ export function App() {
         counted: false,
         mode: pendingResume.mode,
         libraryId: null,
+        map: pendingResume.map, // RN-MAPAS-03/REQ-MAPAS-03: retomada não sorteia de novo
       });
     } catch {
       clearMatch();
@@ -311,9 +325,14 @@ export function App() {
   const showHome =
     replayEntry === null && !libraryOpen && !online && !pendingOnline && !pendingResume && match === null;
 
+  // Mapa da partida ativa (spec MAPAS): fora de uma partida específica
+  // (biblioteca, diálogos de retomar) cai no padrão galáxia (RN-MAPAS-02).
+  const currentMap: MapTheme =
+    match !== null ? match.map : replayEntry !== null ? replayEntry.map : online !== null ? onlineMap : 'galaxy';
+
   return (
-    <div className={`app${showHome ? ' home-minimal' : ''}`}>
-      {showHome ? <PlanetBackground /> : <CosmicBackground />}
+    <div className={`app${showHome ? ' home-minimal' : ''}`} data-map={showHome ? undefined : currentMap}>
+      {showHome ? <PlanetBackground /> : <MapBackground map={currentMap} />}
       <header>
         <h1>{msgs.appTitle}</h1>
         <div className="header-controls">
@@ -369,6 +388,7 @@ export function App() {
         <OnlineGame
           msgs={msgs}
           init={online}
+          onMapChange={setOnlineMap}
           onExit={() => {
             setOnline(null);
             setPendingOnline(null);

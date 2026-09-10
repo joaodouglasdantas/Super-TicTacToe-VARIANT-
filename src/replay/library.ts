@@ -1,6 +1,8 @@
 // Biblioteca local de partidas terminadas (REQ-REPLAY-01, 02; RN-REPLAY-01..04).
 
 import type { GameConfig, Move, Player, Result } from '../engine';
+import { normalizeMap } from '../theme/maps';
+import type { MapTheme } from '../theme/maps';
 
 export type LibraryMode = 'local' | 'bot' | 'online';
 
@@ -12,6 +14,7 @@ export interface LibraryEntry {
   config: GameConfig;
   moves: Move[];
   result: Exclude<Result, null>;
+  map: MapTheme;
 }
 
 const KEY = 'stt.library';
@@ -38,7 +41,8 @@ function writeAll(list: LibraryEntry[]): void {
 }
 
 export function listLibrary(): LibraryEntry[] {
-  return readAll();
+  // REQ-MAPAS-05: entrada salva antes do mapa existir vira galáxia.
+  return readAll().map((entry) => ({ ...entry, map: normalizeMap(entry.map) }));
 }
 
 export function addToLibrary(entry: Omit<LibraryEntry, 'id' | 'finishedAt'>): LibraryEntry {

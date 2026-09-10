@@ -112,6 +112,8 @@ test('controles do replay são inequívocos (AC-REPLAY2-07, 08)', async ({ page 
 });
 
 test('quadro do GIF usa o fundo neon-galáctico (AC-REPLAY2-01, 02; REQ-NEON-08)', async ({ page }) => {
+  // Mapa fixo (spec MAPAS): este teste é sobre o mapa galáxia especificamente.
+  await page.addInitScript(() => localStorage.setItem('stt.forceMap', 'galaxy'));
   await playFullMatch(page);
 
   const bg = await page.evaluate(async () => {

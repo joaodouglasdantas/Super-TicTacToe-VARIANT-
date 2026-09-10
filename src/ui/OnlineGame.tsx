@@ -13,6 +13,7 @@ import { addToLibrary, removeFromLibrary } from '../replay/library';
 import type { LibraryEntry } from '../replay/library';
 import { clearOnline, saveOnline } from '../storage/persist';
 import type { SavedOnline } from '../storage/persist';
+import type { MapTheme } from '../theme/maps';
 import { GameScreen } from './GameScreen';
 import { downloadEntryGif, ReplayScreen } from './ReplayScreen';
 
@@ -23,6 +24,7 @@ export interface OnlineInit {
   // Partida nova de host:
   config?: GameConfig;
   hostSymbol?: Player;
+  map?: MapTheme; // RN-MAPAS-03: só o host sorteia; guest adota via p2p
   // Retomada (qualquer papel):
   saved?: SavedOnline;
 }
@@ -31,6 +33,9 @@ interface OnlineGameProps {
   msgs: Messages;
   init: OnlineInit;
   onExit: () => void;
+  // O mapa só é conhecido de verdade depois do handshake (guest adota o do
+  // host); App.tsx usa isso pra escolher o fundo decorativo certo (spec MAPAS).
+  onMapChange: (map: MapTheme) => void;
 }
 
 type Stage = 'connecting' | 'waiting' | 'playing';
@@ -42,7 +47,7 @@ const RECONNECT_DELAYS_MS = [4000, 8000, 16_000, 32_000, 60_000];
 // Erro local de tempo esgotado, somado aos erros do transporte.
 type OnlineError = TransportError | { kind: 'tempo-esgotado' };
 
-export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
+export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps) {
   const [code, setCode] = useState(init.code);
   const [stage, setStage] = useState<Stage>('connecting');
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
@@ -118,6 +123,7 @@ export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
       config: { ...snap.state.config },
       moves: snap.state.moves,
       result: snap.state.result ?? 'draw',
+      map: snap.map,
     };
   }
 
@@ -163,6 +169,7 @@ export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
                   myName: init.myName,
                   config: init.config,
                   hostSymbol: init.hostSymbol,
+                  map: init.map,
                 },
             {
               onChange: (snap) => {
@@ -174,6 +181,7 @@ export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
                   return snap;
                 });
                 if (snap.phase === 'playing') setStage('playing');
+                onMapChange(snap.map);
                 // Toda mudança de estado real limpa avisos transitórios.
                 setUndoSent(false);
                 // RN-CONEXAO-08: jogada nova depois do pedido invalida o
@@ -198,6 +206,7 @@ export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
                     config: { ...snap.state.config },
                     moves: snap.state.moves,
                     result,
+                    map: snap.map,
                   }).id;
                 } else if (prevResultRef.current !== null && result === null) {
                   if (libraryIdRef.current !== null) {
@@ -215,6 +224,7 @@ export function OnlineGame({ msgs, init, onExit }: OnlineGameProps) {
                   moves: snap.state.moves,
                   score: snap.score,
                   names: snap.names,
+                  map: snap.map,
                 };
                 if (snap.phase === 'peer-left' || snap.phase === 'version-mismatch') {
                   clearOnline(roomCode, init.role);

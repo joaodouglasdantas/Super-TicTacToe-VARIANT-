@@ -4,6 +4,7 @@ import type { GameConfig, Player, Tiebreak } from '../engine';
 import type { Messages } from '../i18n';
 import { generateRoomCode, normalizeRoomCode } from '../p2p/protocol';
 import type { MatchMode } from '../storage/persist';
+import { randomMapTheme } from '../theme/maps';
 import { IconBot, IconCreateRoom, IconPaste, IconTwoPlayers } from './icons';
 import type { OnlineInit } from './OnlineGame';
 
@@ -98,6 +99,8 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
           tiebreak,
           startingPlayer: starter === 1 ? symbol1 : symbol2,
         },
+        // RN-MAPAS-03: o host sorteia; o guest sempre adota o que chega por p2p.
+        map: randomMapTheme(),
       });
       return;
     }

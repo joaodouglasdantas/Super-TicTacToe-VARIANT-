@@ -1,6 +1,7 @@
 // Exportação e importação de partidas como arquivo (REQ-REPLAY-04, 05; RN-REPLAY-03).
 
 import { replay } from '../engine';
+import { normalizeMap } from '../theme/maps';
 import type { LibraryEntry } from './library';
 
 // RN-REPLAY-03: limite de tamanho do arquivo importado.
@@ -61,5 +62,7 @@ export function parseImported(text: string): Omit<LibraryEntry, 'id'> | null {
     config: match.config,
     moves: match.moves,
     result: match.result,
+    // REQ-MAPAS-05: arquivo exportado antes do mapa existir vira galáxia.
+    map: normalizeMap(match.map),
   };
 }

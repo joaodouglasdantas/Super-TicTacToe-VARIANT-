@@ -55,6 +55,24 @@
   --title-glow: 0 0 10px rgba(255, 255, 255, 0.55);
 }
 
+/* Mapa praia (spec MAPAS, REQ-MAPAS-07): mesmo motor de brilho do mapa
+   galáxia, só a paleta muda — água profunda, laranja/coral pro X, turquesa
+   pro O, dourado areia nas linhas/destaque. Sorteado por partida, nunca
+   escolhido (ver src/theme/maps.ts). */
+.app[data-map='beach'] {
+  --bg: #03181c;
+  --ink: #eafffa;
+  --ink-soft: #8fc9c2;
+  --line: #e3b85a;
+  --line-soft: rgba(227, 184, 90, 0.35);
+  --card-bg: rgba(6, 40, 42, 0.55);
+  --mark-x: #ff8a5c;
+  --mark-o: #2de3c4;
+  --accent: var(--mark-o);
+  --title-glow:
+    0 0 6px var(--mark-o), 0 0 18px rgba(45, 227, 196, 0.5), 0 0 34px rgba(227, 184, 90, 0.35);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -64,12 +82,10 @@ body {
   font-family: var(--font-body);
   font-size: 18px;
   color: var(--ink);
+  /* Só a cor sólida como reserva: o nebuloso de cada mapa mora na própria
+     camada decorativa (.cosmic-bg/.beach-bg/.planet-bg, sempre uma delas
+     montada), pra não misturar a cor de um mapa com o fundo de outro. */
   background-color: var(--bg);
-  background-image:
-    radial-gradient(ellipse 60% 40% at 18% 12%, rgba(255, 62, 200, 0.18), transparent 60%),
-    radial-gradient(ellipse 55% 45% at 85% 8%, rgba(41, 224, 255, 0.15), transparent 60%),
-    radial-gradient(ellipse 75% 60% at 50% 105%, rgba(143, 107, 255, 0.22), transparent 60%);
-  background-attachment: fixed;
   min-height: 100vh;
 }
 
@@ -893,16 +909,35 @@ input:focus-visible {
   gap: 0.8rem;
 }
 
-/* ---- Fundo decorativo neon-galáctico (spec NEON): estrelas, partículas de
-   luz e criaturinhas. Camada só visual, atrás do conteúdo (RN-NEON-02: o
-   componente já marca pointer-events:none e aria-hidden). ---- */
+/* ---- Fundo decorativo dos mapas em jogo (spec NEON/MAPAS): cada mapa
+   (galáxia, praia) tem seu próprio conteúdo, mas reaproveita o mesmo motor
+   de animação (keyframes float-up/drift-ltr/drift-rtl/bob, sem prefixo de
+   mapa) — é o que mantém os dois com a mesma "cara" apesar da paleta e das
+   criaturas serem diferentes (REQ-MAPAS-02). Camada só visual, atrás do
+   conteúdo (RN-NEON-02: o componente já marca pointer-events:none e
+   aria-hidden). ---- */
 
-.cosmic-bg {
+.cosmic-bg,
+.beach-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+}
+
+.cosmic-bg {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 18% 12%, rgba(255, 62, 200, 0.18), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 8%, rgba(41, 224, 255, 0.15), transparent 60%),
+    radial-gradient(ellipse 75% 60% at 50% 105%, rgba(143, 107, 255, 0.22), transparent 60%);
+}
+
+.beach-bg {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 18% 8%, rgba(45, 227, 196, 0.2), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 10%, rgba(255, 138, 92, 0.14), transparent 60%),
+    radial-gradient(ellipse 75% 65% at 50% 105%, rgba(227, 184, 90, 0.16), transparent 60%);
 }
 
 .cosmic-star {
@@ -925,29 +960,46 @@ input:focus-visible {
   }
 }
 
-.cosmic-particle-wrap {
+.cosmic-particle-wrap,
+.beach-bubble-wrap {
   position: absolute;
   bottom: 0;
   height: 0;
 }
 
-.cosmic-particle {
+.cosmic-particle,
+.beach-bubble {
   position: absolute;
   bottom: 0;
   border-radius: 50%;
   background: var(--mark-o);
   box-shadow: 0 0 6px 2px var(--mark-o);
-  animation-name: cosmic-float;
+  animation-name: float-up;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
 
-.cosmic-particle.alt {
+.cosmic-particle.alt,
+.beach-bubble.alt {
   background: var(--mark-x);
   box-shadow: 0 0 6px 2px var(--mark-x);
 }
 
-@keyframes cosmic-float {
+/* Bolha: além de subir, "respira" de tamanho — a mesma queda/subida de
+   opacidade do float-up, só que com um leve pulso pra não parecer só uma
+   partícula de luz recolorida. */
+.beach-bubble {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: color-mix(in srgb, var(--mark-o) 55%, transparent);
+  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--mark-o) 55%, transparent);
+}
+
+.beach-bubble.alt {
+  background: color-mix(in srgb, var(--mark-x) 55%, transparent);
+  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--mark-x) 55%, transparent);
+}
+
+@keyframes float-up {
   0% {
     transform: translateY(0);
     opacity: 0;
@@ -964,33 +1016,37 @@ input:focus-visible {
   }
 }
 
-.cosmic-creature {
+.cosmic-creature,
+.beach-creature {
   position: absolute;
   left: -15%;
   opacity: 0.55;
-  animation-name: cosmic-drift-ltr, cosmic-bob;
+  animation-name: drift-ltr, bob;
   animation-timing-function: linear, ease-in-out;
   animation-iteration-count: infinite, infinite;
   animation-direction: normal, alternate;
 }
 
-.cosmic-creature.reverse {
+.cosmic-creature.reverse,
+.beach-creature.reverse {
   left: 115%;
-  animation-name: cosmic-drift-rtl, cosmic-bob;
+  animation-name: drift-rtl, bob;
 }
 
-.cosmic-creature-shape {
+.cosmic-creature-shape,
+.beach-creature-shape {
   display: block;
   filter: drop-shadow(0 0 6px currentColor);
 }
 
-.cosmic-creature-shape svg {
+.cosmic-creature-shape svg,
+.beach-creature-shape svg {
   display: block;
   width: 100%;
   height: auto;
 }
 
-@keyframes cosmic-drift-ltr {
+@keyframes drift-ltr {
   from {
     left: -15%;
   }
@@ -999,7 +1055,7 @@ input:focus-visible {
   }
 }
 
-@keyframes cosmic-drift-rtl {
+@keyframes drift-rtl {
   from {
     left: 115%;
   }
@@ -1008,7 +1064,7 @@ input:focus-visible {
   }
 }
 
-@keyframes cosmic-bob {
+@keyframes bob {
   from {
     transform: translateY(-10px);
   }
@@ -1020,13 +1076,16 @@ input:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .cosmic-star,
   .cosmic-particle,
-  .cosmic-creature {
+  .cosmic-creature,
+  .beach-bubble,
+  .beach-creature {
     animation: none;
   }
   .cosmic-star {
     opacity: 0.5;
   }
-  .cosmic-particle-wrap {
+  .cosmic-particle-wrap,
+  .beach-bubble-wrap {
     display: none;
   }
 }

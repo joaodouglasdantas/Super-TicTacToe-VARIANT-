@@ -172,6 +172,7 @@ describe('reconexão (GAR-P2P-05)', () => {
       moves: duo.host.snapshot().state.moves,
       score: duo.host.snapshot().score,
       names: ['Ana', 'Bia'] as [string, string],
+      map: 'galaxy' as const,
     };
     const guestSaved = {
       ...hostSaved,

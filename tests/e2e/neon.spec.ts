@@ -13,6 +13,8 @@ test('não existe mais alternador de tema nem textos "Caderno"/"Lousa" (AC-NEON-
 });
 
 test('o fundo decorativo nunca intercepta clique (AC-NEON-05, home e jogo)', async ({ page }) => {
+  // Mapa fixo (spec MAPAS): este teste é sobre o mapa galáxia especificamente.
+  await page.addInitScript(() => localStorage.setItem('stt.forceMap', 'galaxy'));
   await page.goto('/');
   const homePointerEvents = await page.locator('.planet-bg').evaluate((el) => getComputedStyle(el).pointerEvents);
   expect(homePointerEvents).toBe('none');
@@ -26,6 +28,7 @@ test('o fundo decorativo nunca intercepta clique (AC-NEON-05, home e jogo)', asy
 });
 
 test('animações decorativas somem sob prefers-reduced-motion (AC-NEON-06, home e jogo)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('stt.forceMap', 'galaxy'));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   const planetAnim = await page.locator('.planet-bg').evaluate((el) => getComputedStyle(el).animationName);

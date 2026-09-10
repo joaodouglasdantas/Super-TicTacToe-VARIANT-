@@ -39,8 +39,11 @@ export interface GifPalette {
 }
 
 // Lê as cores do tema em uso direto das variáveis de CSS (RN-REPLAY2-01).
+// A partir de .app, não de document.documentElement: é onde o mapa da
+// partida (spec MAPAS) sobrescreve a paleta via [data-map] (ver themes.css).
 export function themePalette(): GifPalette {
-  const style = getComputedStyle(document.documentElement);
+  const el = document.querySelector('.app') ?? document.documentElement;
+  const style = getComputedStyle(el);
   const read = (name: string, fallback: string) =>
     style.getPropertyValue(name).trim() || fallback;
   return {
