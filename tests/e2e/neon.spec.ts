@@ -28,10 +28,7 @@ test('o fundo decorativo nunca intercepta clique (AC-NEON-05, home e jogo)', asy
 test('animações decorativas somem sob prefers-reduced-motion (AC-NEON-06, home e jogo)', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const planetAnim = await page
-    .locator('.planet-orbit')
-    .first()
-    .evaluate((el) => getComputedStyle(el).animationName);
+  const planetAnim = await page.locator('.planet-bg').evaluate((el) => getComputedStyle(el).animationName);
   expect(planetAnim).toBe('none');
 
   await page.getByTestId('mode-local').click();

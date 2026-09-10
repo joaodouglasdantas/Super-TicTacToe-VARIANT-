@@ -1031,10 +1031,10 @@ input:focus-visible {
   }
 }
 
-/* ---- Fundo da tela inicial (spec NEON, home): preto puro + planetas de
-   kits variados flutuando (lava, gelo, colorido, galáxia, estranho), só
-   gradiente CSS, sem asset externo. Mesma regra de nunca capturar
-   clique/toque do resto das camadas decorativas. ---- */
+/* ---- Fundo da tela inicial (spec NEON, home): a arte de planetas do
+   usuário (public/home-planets.png), com zoom/pan bem lento pra não ficar
+   parada. Mesma regra de nunca capturar clique/toque das outras camadas
+   decorativas. ---- */
 
 .planet-bg {
   position: fixed;
@@ -1042,103 +1042,24 @@ input:focus-visible {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #000;
+  background-color: #000;
+  background-image: none; /* definida inline no componente (precisa de BASE_URL) */
+  background-size: cover;
+  background-position: center;
+  animation: planet-bg-pan 44s ease-in-out infinite alternate;
 }
 
-.planet-orbit {
-  position: absolute;
-  animation-name: planet-drift;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-}
-
-.planet {
-  display: block;
-  border-radius: 50%;
-  position: relative;
-  animation-name: planet-pulse;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-}
-
-.planet-lava {
-  background: radial-gradient(circle at 34% 30%, #ffe08a, #ff7a1a 42%, #7a1600 76%, #240500 100%);
-  box-shadow: 0 0 22px 4px rgba(255, 106, 0, 0.45);
-}
-
-.planet-ice {
-  background: radial-gradient(circle at 34% 30%, #f2feff, #8fe0ff 45%, #2a6f9e 80%, #0a2233 100%);
-  box-shadow: 0 0 22px 4px rgba(143, 224, 255, 0.45);
-}
-
-.planet-rainbow {
-  background: conic-gradient(from 0deg, #ff5f6d, #ffc371, #f9f871, #6dffb3, #5ec8ff, #a26dff, #ff5f6d);
-  box-shadow: 0 0 22px 4px rgba(255, 255, 255, 0.3);
-}
-
-.planet-galaxy {
-  background:
-    radial-gradient(circle at 70% 75%, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.4) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 55% 45%, rgba(255, 255, 255, 0.6) 0 1.2px, transparent 1.8px),
-    radial-gradient(circle at 34% 30%, #cdb6ff, #7a4fe0 45%, #2c1666 80%, #0a0420 100%);
-  background-size:
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 100%;
-  box-shadow: 0 0 22px 4px rgba(143, 107, 255, 0.5);
-}
-
-/* "Bem estranho": um planeta-olho, com íris fora de centro. */
-.planet-weird {
-  background: radial-gradient(circle at 50% 50%, #f4ecd8, #d8c9a3 70%, #8a7850 100%);
-  box-shadow: 0 0 18px 3px rgba(244, 236, 216, 0.4);
-}
-
-.planet-weird::after {
-  content: '';
-  position: absolute;
-  top: 28%;
-  left: 32%;
-  width: 38%;
-  height: 38%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%, #1a1a1a 0 22%, #6dffb3 24% 70%, #1a1a1a 72% 100%);
-}
-
-.planet.has-ring::before {
-  content: '';
-  position: absolute;
-  inset: -18% -42%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  transform: rotate(-18deg) scaleY(0.32);
-}
-
-@keyframes planet-drift {
+@keyframes planet-bg-pan {
   from {
-    translate: 0 0;
+    transform: scale(1) translate(0, 0);
   }
   to {
-    translate: 3vw -3vh;
-  }
-}
-
-@keyframes planet-pulse {
-  from {
-    transform: scale(0.96);
-  }
-  to {
-    transform: scale(1.04);
+    transform: scale(1.08) translate(-1.5%, -1.5%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .planet-orbit,
-  .planet {
+  .planet-bg {
     animation: none;
   }
 }
