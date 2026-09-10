@@ -54,7 +54,8 @@ export function parseImported(text: string): Omit<LibraryEntry, 'id'> | null {
   }
   return {
     finishedAt: typeof match.finishedAt === 'number' ? match.finishedAt : Date.now(),
-    mode: match.mode === 'bot' || match.mode === 'online' ? match.mode : 'local',
+    // Arquivo exportado quando o modo bot ainda existia: normaliza pro tipo atual.
+    mode: match.mode === 'online' ? 'online' : 'local',
     names: {
       X: String(match.names.X ?? '').slice(0, 24),
       O: String(match.names.O ?? '').slice(0, 24),

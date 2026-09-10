@@ -38,7 +38,7 @@ describe('desfazer (REQ-STT-07, AC-STT-08 na parte do motor)', () => {
     expect(state.currentPlayer).toBe('O');
   });
 
-  it('desfazer em par (uso do modo bot) devolve a vez ao mesmo jogador', () => {
+  it('desfazer N jogadas de uma vez devolve a vez ao mesmo jogador', () => {
     let state = createGame(classic);
     state = applyMove(state, [4, 0]);
     state = applyMove(state, [0, 4]);

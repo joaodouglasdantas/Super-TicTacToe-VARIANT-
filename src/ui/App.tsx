@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { soundsForTransition } from '../audio/events';
 import { playMoveSounds, setMuted } from '../audio/sound';
-import { chooseMove } from '../bot/bot';
 import { applyMove, createGame, otherPlayer, replay, serialize, undo } from '../engine';
 import type { GameState, Path, Player } from '../engine';
 import { detectLanguage, messages } from '../i18n';
@@ -27,7 +26,7 @@ import { MapBackground } from './MapBackground';
 import { PlanetBackground } from './PlanetBackground';
 import { OnlineGame } from './OnlineGame';
 import type { OnlineInit } from './OnlineGame';
-import type { MatchMode, Preferences, SavedMatch, SessionScore } from '../storage/persist';
+import type { Preferences, SavedMatch, SessionScore } from '../storage/persist';
 import { downloadEntryGif, ReplayScreen } from './ReplayScreen';
 import { GameScreen } from './GameScreen';
 import { SetupScreen } from './SetupScreen';
@@ -39,13 +38,8 @@ interface Match {
   player1Symbol: Player;
   score: SessionScore;
   counted: boolean; // o resultado desta partida já entrou no placar?
-  mode: MatchMode;
   libraryId: string | null; // entrada criada na biblioteca quando a partida terminou
   map: MapTheme; // spec MAPAS: sorteado ao criar, mantido em revanche/retomada
-}
-
-function botSymbol(mode: MatchMode): Player | null {
-  return mode.type === 'bot' ? otherPlayer(mode.humanSymbol) : null;
 }
 
 const zeroScore: SessionScore = { X: 0, O: 0, draws: 0 };
@@ -124,7 +118,6 @@ export function App() {
         playerNames: m.playerNames,
         player1Symbol: m.player1Symbol,
         score: m.score,
-        mode: m.mode,
         map: m.map,
       });
     } else {
@@ -142,7 +135,6 @@ export function App() {
       playerNames: setup.playerNames,
       player1Symbol: setup.player1Symbol,
       lastConfig: setup.config,
-      lastMode: setup.mode,
     });
     setPendingResume(null);
     setAndPersist({
@@ -151,7 +143,6 @@ export function App() {
       player1Symbol: setup.player1Symbol,
       score: match?.score ?? zeroScore,
       counted: false,
-      mode: setup.mode,
       libraryId: null,
       map: randomMapTheme(), // RN-MAPAS-03: quem cria a partida sorteia
     });
@@ -165,21 +156,14 @@ export function App() {
   // Nomes de exibição por símbolo, resolvidos no momento do salvamento.
   function namesBySymbol(m: Match): Record<Player, string> {
     const p1 = m.playerNames[0] || msgs.player1;
-    const p2 =
-      m.mode.type === 'bot'
-        ? `${msgs.botName} (${
-            { easy: msgs.diffEasy, medium: msgs.diffMedium, hard: msgs.diffHard }[
-              m.mode.difficulty
-            ]
-          })`
-        : m.playerNames[1] || msgs.player2;
+    const p2 = m.playerNames[1] || msgs.player2;
     return m.player1Symbol === 'X' ? { X: p1, O: p2 } : { X: p2, O: p1 };
   }
 
   // Entrada de biblioteca (efêmera ou pra salvar) a partir da partida atual.
   function matchEntry(m: Match, state: GameState): Omit<LibraryEntry, 'id' | 'finishedAt'> {
     return {
-      mode: m.mode.type,
+      mode: 'local',
       names: namesBySymbol(m),
       config: { ...state.config },
       moves: state.moves,
@@ -210,29 +194,11 @@ export function App() {
 
   function handleHumanMove(path: Path) {
     if (!match || match.state.result !== null) return;
-    // No modo bot, a vez do bot não aceita clique humano.
-    if (match.state.currentPlayer === botSymbol(match.mode)) return;
     applyPath(match, path);
   }
 
-  // Vez do bot: responde com um pequeno atraso pra jogada ser perceptível (AC-STT-07).
-  useEffect(() => {
-    if (!match || match.mode.type !== 'bot' || match.state.result !== null) return;
-    if (match.state.currentPlayer !== botSymbol(match.mode)) return;
-    const mode = match.mode;
-    const timer = setTimeout(() => {
-      applyPath(match, chooseMove(match.state, mode.difficulty));
-    }, 350);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match]);
-
   function handleUndo() {
     if (!match || match.state.moves.length === 0) return;
-    // REQ-STT-07: contra o bot, desfaz o par (resposta do bot + jogada humana).
-    const bot = botSymbol(match.mode);
-    const count =
-      bot !== null && match.state.moves.at(-1)?.player === bot ? 2 : 1;
     // Desfazer após o fim reabre a partida; o placar da partida contada é revertido.
     let { score, counted, libraryId } = match;
     if (counted && match.state.result !== null) {
@@ -246,7 +212,7 @@ export function App() {
         libraryId = null;
       }
     }
-    setAndPersist({ ...match, state: undo(match.state, count), score, counted, libraryId });
+    setAndPersist({ ...match, state: undo(match.state), score, counted, libraryId });
   }
 
   // REQ-STT-08: revanche mantém adversário e regras, alternando quem começa.
@@ -274,7 +240,6 @@ export function App() {
         player1Symbol: pendingResume.player1Symbol,
         score: pendingResume.score,
         counted: false,
-        mode: pendingResume.mode,
         libraryId: null,
         map: pendingResume.map, // RN-MAPAS-03/REQ-MAPAS-03: retomada não sorteia de novo
       });
@@ -300,24 +265,9 @@ export function App() {
         },
       playerNames: prefs.playerNames,
       player1Symbol: prefs.player1Symbol,
-      mode: prefs.lastMode ?? { type: 'local' },
     }),
     [prefs],
   );
-
-  // Rótulo do adversário no modo bot, sensível ao idioma.
-  const displayNames: [string, string] | null = match
-    ? match.mode.type === 'bot'
-      ? [
-          match.playerNames[0],
-          `${msgs.botName} (${
-            { easy: msgs.diffEasy, medium: msgs.diffMedium, hard: msgs.diffHard }[
-              match.mode.difficulty
-            ]
-          })`,
-        ]
-      : match.playerNames
-    : null;
 
   // Tela inicial (spec NEON, home): fundo de planetas e visual simples
   // (preto/branco), sem o brilho neon — que fica reservado pro jogo em si
@@ -468,7 +418,7 @@ export function App() {
         <GameScreen
           msgs={msgs}
           state={match.state}
-          playerNames={displayNames ?? match.playerNames}
+          playerNames={match.playerNames}
           player1Symbol={match.player1Symbol}
           score={match.score}
           onMove={handleHumanMove}

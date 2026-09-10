@@ -4,7 +4,7 @@ import type { GameConfig, Move, Player, Result } from '../engine';
 import { normalizeMap } from '../theme/maps';
 import type { MapTheme } from '../theme/maps';
 
-export type LibraryMode = 'local' | 'bot' | 'online';
+export type LibraryMode = 'local' | 'online';
 
 export interface LibraryEntry {
   id: string;
@@ -41,8 +41,14 @@ function writeAll(list: LibraryEntry[]): void {
 }
 
 export function listLibrary(): LibraryEntry[] {
-  // REQ-MAPAS-05: entrada salva antes do mapa existir vira galáxia.
-  return readAll().map((entry) => ({ ...entry, map: normalizeMap(entry.map) }));
+  return readAll().map((entry) => ({
+    ...entry,
+    // REQ-MAPAS-05: entrada salva antes do mapa existir vira galáxia.
+    map: normalizeMap(entry.map),
+    // Entrada salva quando o modo bot ainda existia (removido depois): sem
+    // consumidor que leia este campo hoje, mas normaliza pra bater com o tipo.
+    mode: entry.mode === 'online' ? 'online' : 'local',
+  }));
 }
 
 export function addToLibrary(entry: Omit<LibraryEntry, 'id' | 'finishedAt'>): LibraryEntry {

@@ -19,14 +19,14 @@ Este repositório usa a **Promptaria** como framework de agente.
 
 ## Sobre o projeto
 
-Jogo de Super TicTacToe (jogo da velha em tabuleiros aninhados) jogável no navegador, com três modos: multiplayer local, contra bot (três dificuldades) e multiplayer via web p2p (WebRTC + PeerJS, sem backend próprio). Publicado como site estático no GitHub Pages. Interface bilíngue (português e inglês), visual estilo giz/caderno. A spec fundadora é a `STT` (em `.specs/STT/spec.md`), com entrega em etapas: E1 motor + local, E2 bot, E3 p2p.
+Jogo de Super TicTacToe (jogo da velha em tabuleiros aninhados) jogável no navegador, com dois modos: multiplayer local e multiplayer via web p2p (WebRTC + PeerJS, sem backend próprio). Publicado como site estático no GitHub Pages. Interface bilíngue (português e inglês), visual neon-galáctico com mapas sorteados por partida (galáxia e praia, spec `MAPAS`). A spec fundadora é a `STT` (em `.specs/STT/spec.md`), com entrega em etapas: E1 motor + local, E2 bot (removido depois, ver `.specs/REMOVER-BOT/spec.md`), E3 p2p.
 
 ## Stack
 
 - Frontend: React + TypeScript + Vite (SPA estática, sem backend)
 - Multiplayer: WebRTC DataChannel com sinalização via broker público do PeerJS
 - Persistência: armazenamento do navegador (localStorage/IndexedDB)
-- Testes: Vitest (unitários, motor e bot) + Playwright (interface)
+- Testes: Vitest (unitários, motor e p2p) + Playwright (interface)
 - Deploy: GitHub Actions builda, roda os testes e publica no GitHub Pages a cada push na `main` (teste falhando bloqueia a publicação)
 
 <!-- Exemplo de formato (substitua pelo real durante configurar-projeto):
@@ -44,7 +44,7 @@ Jogo de Super TicTacToe (jogo da velha em tabuleiros aninhados) jogável no nave
 
 ## Como testar
 
-- `npm test` roda os unitários (Vitest): motor de regras e bot
+- `npm test` roda os unitários (Vitest): motor de regras e protocolo p2p
 - `npm run test:ui` roda os testes de interface (Playwright)
 - O CI roda ambos em todo push; publicação no Pages só acontece com tudo verde
 

@@ -9,7 +9,6 @@ Esse repositório é meu fork pessoal do [Super TicTacToe original](https://gith
 ## Modos de jogo
 
 - **Dois jogadores (local):** alternando no mesmo dispositivo
-- **Contra o bot:** três dificuldades (fácil, médio e difícil com busca minimax)
 - **Multiplayer via web:** partidas p2p por código de sala (WebRTC), sem servidor próprio, com reconexão automática após queda de conexão
 
 ## Regras
@@ -43,7 +42,7 @@ npm run dev        # abre em http://localhost:5173
 ## Testes
 
 ```bash
-npm test           # unitários (Vitest): motor de regras, bot e protocolo p2p
+npm test           # unitários (Vitest): motor de regras e protocolo p2p
 npm run test:ui    # interface (Playwright); antes: npx playwright install chromium
 npm run typecheck  # TypeScript
 ```
@@ -51,7 +50,6 @@ npm run typecheck  # TypeScript
 ## Arquitetura
 
 - `src/engine/`: motor de regras em TypeScript puro, recursivo (suporta profundidade N; a UI expõe o clássico de 2 níveis). Não depende de React nem de nada de UI.
-- `src/bot/`: os três níveis do bot, consumindo só a API pública do motor
 - `src/p2p/`: multiplayer online em três camadas: protocolo (mensagens e validação), sessão (agnóstica de transporte) e transportes (PeerJS em produção, BroadcastChannel nos testes)
 - `src/audio/`: decisão de quais sons uma jogada produz (camada pura, testável) e a síntese/fila de reprodução via Web Audio
 - `src/ui/`: componentes React, ícones SVG (`icons.tsx`), fundo decorativo (`CosmicBackground.tsx`) e o tema CSS neon-galáctico

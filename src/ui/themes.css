@@ -359,18 +359,11 @@ input:focus-visible {
   background: var(--line-soft);
 }
 
-/* 1x2: "Criar sala" numa linha de largura total (ação online, mais peso),
-   "1 jogador" e "2 jogadores" lado a lado abaixo, mesma altura entre os
-   três (--mode-h). */
+/* "Criar sala" e "2 jogadores", cada um numa linha de largura total,
+   mesma altura entre os dois (--mode-h). */
 .modes-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.modes-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
 }
 
@@ -404,16 +397,6 @@ input:focus-visible {
   font-size: 0.72rem;
   color: var(--ink-soft);
   font-weight: normal;
-}
-
-.modes-pair .mode-btn {
-  flex-direction: column;
-  text-align: center;
-  gap: 0.2rem;
-}
-
-.modes-pair .mode-btn .label-group {
-  align-items: center;
 }
 
 .home-back {

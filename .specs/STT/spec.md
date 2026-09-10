@@ -1,5 +1,7 @@
 # STT: Super TicTacToe jogável no navegador (local, bot e p2p)
 
+> **Nota (2026-09-10):** o modo "contra o bot" descrito nesta spec (REQ-STT-05, 07; AC-STT-07, 08) foi **removido** do jogo — ver `.specs/REMOVER-BOT/spec.md`. Esta spec continua documentando o escopo fundador tal como foi entregue e validado na época; não foi reescrita.
+
 ## 1. História de Usuário
 
 **Como** jogador, **Quero** jogar Super TicTacToe no navegador contra outra pessoa (no mesmo dispositivo ou via web) ou contra um bot, **Para que** eu me divirta com o jogo sem instalar nada e sem depender de servidor pago.

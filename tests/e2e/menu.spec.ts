@@ -1,18 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-// Spec MENU: home com código em destaque e modos 1x2, link de convite,
+// Spec MENU: home com código em destaque e modos de jogo, link de convite,
 // reticências animadas e padronização de componentes.
 
-test('home mostra código em destaque e os três modos em 1x2', async ({ page }) => {
+test('home mostra código em destaque e os modos de jogo (sem bot, removido)', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('join-code')).toBeVisible();
   await expect(page.getByTestId('mode-online')).toBeVisible();
-  await expect(page.getByTestId('mode-bot')).toBeVisible();
   await expect(page.getByTestId('mode-local')).toBeVisible();
-  // "2 jogadores"/mesmo aparelho tem o mesmo peso dos outros dois, não é
-  // mais um link discreto (idioma do navegador de teste pode ser pt ou en).
+  await expect(page.getByTestId('mode-bot')).toHaveCount(0);
+  // idioma do navegador de teste pode ser pt ou en.
   await expect(page.getByTestId('mode-local')).toContainText(/2 (jogadores|players)/);
-  await expect(page.getByTestId('mode-bot')).toContainText(/1 (jogador|player)/);
 });
 
 test('código inválido no campo de entrar mostra erro e não avança', async ({ page }) => {

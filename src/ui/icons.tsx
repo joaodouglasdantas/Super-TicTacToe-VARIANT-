@@ -86,19 +86,6 @@ export function IconCreateRoom({ className }: IconProps) {
   );
 }
 
-export function IconBot({ className }: IconProps) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="4.5" y="8.5" width="15" height="11" rx="2.4" />
-      <line x1="12" y1="8.5" x2="12" y2="5" />
-      <circle cx="12" cy="3.6" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="9" cy="13.8" r="1.15" fill="currentColor" stroke="none" />
-      <circle cx="15" cy="13.8" r="1.15" fill="currentColor" stroke="none" />
-      <path d="M8.5 17.2c1.8 1.1 5.2 1.1 7 0" />
-    </svg>
-  );
-}
-
 export function IconTwoPlayers({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

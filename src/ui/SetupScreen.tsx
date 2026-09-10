@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import type { Difficulty } from '../bot/bot';
 import type { GameConfig, Player, Tiebreak } from '../engine';
 import type { Messages } from '../i18n';
 import { generateRoomCode, normalizeRoomCode } from '../p2p/protocol';
-import type { MatchMode } from '../storage/persist';
 import { randomMapTheme } from '../theme/maps';
-import { IconBot, IconCreateRoom, IconPaste, IconTwoPlayers } from './icons';
+import { IconCreateRoom, IconPaste, IconTwoPlayers } from './icons';
 import type { OnlineInit } from './OnlineGame';
 
 export interface MatchSetup {
   config: GameConfig;
   playerNames: [string, string];
   player1Symbol: Player;
-  mode: MatchMode;
 }
 
 interface SetupScreenProps {
@@ -26,14 +23,14 @@ interface SetupScreenProps {
 }
 
 type Stage = 'home' | 'join-name' | 'config';
-type ModeType = 'local' | 'bot' | 'online';
+type ModeType = 'local' | 'online';
 
 // Tela inicial (REQ-MENU-01..04, RN-STT-04..06): código de convite em
-// destaque, os três modos abaixo em 1x2, configurações atrás da engrenagem
-// do cabeçalho (App.tsx).
+// destaque, os modos abaixo, configurações atrás da engrenagem do
+// cabeçalho (App.tsx).
 export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOnline }: SetupScreenProps) {
   const [stage, setStage] = useState<Stage>(initialJoinCode ? 'join-name' : 'home');
-  const [modeType, setModeType] = useState<ModeType>(initial.mode.type);
+  const [modeType, setModeType] = useState<ModeType>('local');
 
   const [name1, setName1] = useState(initial.playerNames[0]);
   const [name2, setName2] = useState(initial.playerNames[1]);
@@ -43,16 +40,12 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
   );
   const [clearVariant, setClearVariant] = useState(initial.config.clearVariant);
   const [tiebreak, setTiebreak] = useState<Tiebreak>(initial.config.tiebreak);
-  const [difficulty, setDifficulty] = useState<Difficulty>(
-    initial.mode.type === 'bot' ? initial.mode.difficulty : 'medium',
-  );
 
   const [joinCodeInput, setJoinCodeInput] = useState(initialJoinCode ?? '');
   const [joinCode, setJoinCode] = useState(initialJoinCode ?? '');
   const [codeError, setCodeError] = useState(false);
 
   const symbol2: Player = symbol1 === 'X' ? 'O' : 'X';
-  const player2Label = modeType === 'bot' ? msgs.botName : msgs.player2;
 
   function pickMode(mode: ModeType) {
     setModeType(mode);
@@ -111,12 +104,8 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
         tiebreak,
         startingPlayer: starter === 1 ? symbol1 : symbol2,
       },
-      playerNames: [name1.trim(), modeType === 'bot' ? '' : name2.trim()],
+      playerNames: [name1.trim(), name2.trim()],
       player1Symbol: symbol1,
-      mode:
-        modeType === 'bot'
-          ? { type: 'bot', difficulty, humanSymbol: symbol1 }
-          : { type: 'local' },
     });
   }
 
@@ -172,36 +161,20 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
               <span className="sub">{msgs.createRoomHint}</span>
             </span>
           </button>
-          <div className="modes-pair">
-            <button
-              type="button"
-              className="btn mode-btn"
-              onClick={() => pickMode('bot')}
-              data-testid="mode-bot"
-            >
-              <span className="icon" aria-hidden="true">
-                <IconBot />
-              </span>
-              <span className="label-group">
-                <span className="title">{msgs.onePlayer}</span>
-                <span className="sub">{msgs.botMode}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              className="btn mode-btn"
-              onClick={() => pickMode('local')}
-              data-testid="mode-local"
-            >
-              <span className="icon" aria-hidden="true">
-                <IconTwoPlayers />
-              </span>
-              <span className="label-group">
-                <span className="title">{msgs.twoPlayers}</span>
-                <span className="sub">{msgs.sameDevice}</span>
-              </span>
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn mode-btn"
+            onClick={() => pickMode('local')}
+            data-testid="mode-local"
+          >
+            <span className="icon" aria-hidden="true">
+              <IconTwoPlayers />
+            </span>
+            <span className="label-group">
+              <span className="title">{msgs.twoPlayers}</span>
+              <span className="sub">{msgs.sameDevice}</span>
+            </span>
+          </button>
         </div>
       </section>
     );
@@ -266,20 +239,6 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
             />
           </label>
         )}
-        {modeType === 'bot' && (
-          <label>
-            {msgs.difficulty}
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              data-testid="difficulty"
-            >
-              <option value="easy">{msgs.diffEasy}</option>
-              <option value="medium">{msgs.diffMedium}</option>
-              <option value="hard">{msgs.diffHard}</option>
-            </select>
-          </label>
-        )}
       </div>
 
       <div className="field-row">
@@ -303,7 +262,7 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
           >
             <option value={1}>{name1.trim() || msgs.player1}</option>
             <option value={2}>
-              {modeType === 'local' ? name2.trim() || msgs.player2 : player2Label}
+              {modeType === 'local' ? name2.trim() || msgs.player2 : msgs.player2}
             </option>
           </select>
         </label>

@@ -1,5 +1,7 @@
 # ESTAT: Estatísticas locais do jogador
 
+> **Nota (2026-09-10):** esta spec ainda não foi implementada. O modo "contra o bot" que ela cita em vários requisitos foi **removido** do jogo (`.specs/REMOVER-BOT/spec.md`) antes de esta feature ter sido construída — revisar REQ-ESTAT-01, 04, RN-ESTAT-05 e os cenários AC-ESTAT-01/02 (todos citam o bot) antes de implementar.
+
 ## 1. História de Usuário
 
 **Como** jogador, **Quero** ver minhas estatísticas acumuladas neste aparelho (partidas, vitórias, aproveitamento, sequências e desempenho contra cada nível do bot), **Para que** eu acompanhe minha evolução sem depender de conta nem de servidor.
