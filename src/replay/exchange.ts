@@ -45,8 +45,12 @@ export function parseImported(text: string): Omit<LibraryEntry, 'id'> | null {
   }
   const match = payload.match;
   if (!match.config || !Array.isArray(match.moves) || !match.names) return null;
+  // REQ-MAPAS-05: arquivo exportado antes do mapa existir vira galáxia — precisa
+  // normalizar antes do replay de validação, senão um config sem `map` quebra
+  // o sorteio de carta (spec CARTAS) no meio da reconstrução do estado.
+  const config = { ...match.config, map: normalizeMap(match.config.map) };
   try {
-    const state = replay({ config: match.config, moves: match.moves });
+    const state = replay({ config, moves: match.moves });
     // Só partida terminada entra na biblioteca, e o resultado precisa bater.
     if (state.result === null || state.result !== match.result) return null;
   } catch {
@@ -60,10 +64,8 @@ export function parseImported(text: string): Omit<LibraryEntry, 'id'> | null {
       X: String(match.names.X ?? '').slice(0, 24),
       O: String(match.names.O ?? '').slice(0, 24),
     },
-    config: match.config,
+    config,
     moves: match.moves,
     result: match.result,
-    // REQ-MAPAS-05: arquivo exportado antes do mapa existir vira galáxia.
-    map: normalizeMap(match.map),
   };
 }

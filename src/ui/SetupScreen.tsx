@@ -91,9 +91,9 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
           clearVariant,
           tiebreak,
           startingPlayer: starter === 1 ? symbol1 : symbol2,
+          // RN-MAPAS-03: o host sorteia; o guest sempre adota o que chega por p2p.
+          map: randomMapTheme(),
         },
-        // RN-MAPAS-03: o host sorteia; o guest sempre adota o que chega por p2p.
-        map: randomMapTheme(),
       });
       return;
     }
@@ -103,6 +103,7 @@ export function SetupScreen({ msgs, initial, initialJoinCode, onStart, onStartOn
         clearVariant,
         tiebreak,
         startingPlayer: starter === 1 ? symbol1 : symbol2,
+        map: randomMapTheme(), // RN-MAPAS-03: quem cria a partida sorteia
       },
       playerNames: [name1.trim(), name2.trim()],
       player1Symbol: symbol1,

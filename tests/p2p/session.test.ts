@@ -16,6 +16,7 @@ const classic: GameConfig = {
   clearVariant: false,
   tiebreak: 'majority',
   startingPlayer: 'X',
+  map: 'galaxy',
 };
 
 function makeEvents(): SessionEvents {

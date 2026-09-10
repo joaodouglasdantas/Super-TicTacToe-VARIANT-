@@ -85,15 +85,30 @@ export function winningLines(board: Board, tiebreak: Tiebreak): number[][] {
   ]);
 }
 
-// Um tabuleiro é jogável se nem ele nem nenhum ancestral está decidido.
-export function isPlayablePath(board: Board, path: Path, tiebreak: Tiebreak): boolean {
+// Spec CARTAS (RN-CARTAS-02): tabuleiro bloqueado por "Devorador de
+// Tabuleiro"/"Maré Alta" conta como indisponível, igual a decidido, até
+// `actionCount` alcançar o prazo. Sem carta nenhuma jogada (uso normal do
+// motor, actionCount omitido), nunca há bloqueio.
+export function isLocked(board: Board, actionCount = Infinity): boolean {
+  return board.lockedUntilAction !== undefined && actionCount < board.lockedUntilAction;
+}
+
+// Um tabuleiro é jogável se nem ele nem nenhum ancestral está decidido ou bloqueado.
+export function isPlayablePath(
+  board: Board,
+  path: Path,
+  tiebreak: Tiebreak,
+  actionCount = Infinity,
+): boolean {
   let node: Board | Player | null = board;
-  if (resultOf(board, tiebreak) !== null) return false;
+  if (resultOf(board, tiebreak) !== null || isLocked(board, actionCount)) return false;
   for (const index of path) {
     if (!isBoard(node)) return false;
     node = node.cells[index];
     if (node === undefined) return false;
-    if (isBoard(node) && resultOf(node, tiebreak) !== null) return false;
+    if (isBoard(node) && (resultOf(node, tiebreak) !== null || isLocked(node, actionCount))) {
+      return false;
+    }
   }
   return true;
 }
@@ -103,13 +118,16 @@ export function playableLeafBoards(
   board: Board,
   tiebreak: Tiebreak,
   prefix: Path = [],
+  actionCount = Infinity,
 ): Path[] {
   const node = getNode(board, prefix);
-  if (!isBoard(node) || resultOf(node, tiebreak) !== null) return [];
+  if (!isBoard(node) || resultOf(node, tiebreak) !== null || isLocked(node, actionCount)) {
+    return [];
+  }
   if (node.depth === 1) return [prefix];
   const paths: Path[] = [];
   for (let i = 0; i < 9; i++) {
-    paths.push(...playableLeafBoards(board, tiebreak, [...prefix, i]));
+    paths.push(...playableLeafBoards(board, tiebreak, [...prefix, i], actionCount));
   }
   return paths;
 }

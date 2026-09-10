@@ -52,7 +52,13 @@ test('desfazer não dispara som novo (RN-SOM-05, AC-NEON-03)', async ({ page }) 
     };
     snd.setMuted(false);
 
-    const classic = { depth: 2, clearVariant: false, tiebreak: 'majority' as const, startingPlayer: 'X' as const };
+    const classic = {
+      depth: 2,
+      clearVariant: false,
+      tiebreak: 'majority' as const,
+      startingPlayer: 'X' as const,
+      map: 'galaxy' as const,
+    };
     const before = engine.createGame(classic);
     const after = engine.applyMove(before, [4, 4]);
     snd.playMoveSounds(evt.soundsForTransition(before, after));

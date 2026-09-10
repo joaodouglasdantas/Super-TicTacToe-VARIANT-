@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { GameConfig, Path, Player } from '../engine';
+import type { CardId, GameConfig, Path, Player } from '../engine';
 import type { Messages } from '../i18n';
 import { soundsForTransition } from '../audio/events';
 import { playMoveSounds } from '../audio/sound';
@@ -8,6 +8,7 @@ import { P2PSession } from '../p2p/session';
 import type { SessionSnapshot } from '../p2p/session';
 import { connectTransport } from '../p2p/transport';
 import type { Role, TransportAttempt, TransportError } from '../p2p/transport';
+import type { CardTarget } from './CardHand';
 import { Ellipsis } from './Ellipsis';
 import { addToLibrary, removeFromLibrary } from '../replay/library';
 import type { LibraryEntry } from '../replay/library';
@@ -21,10 +22,10 @@ export interface OnlineInit {
   role: Role;
   code: string;
   myName: string;
-  // Partida nova de host:
+  // Partida nova de host: o mapa (spec MAPAS) já vem dentro de config.map,
+  // sorteado por quem cria a sala (RN-MAPAS-03) — guest nunca sorteia.
   config?: GameConfig;
   hostSymbol?: Player;
-  map?: MapTheme; // RN-MAPAS-03: só o host sorteia; guest adota via p2p
   // Retomada (qualquer papel):
   saved?: SavedOnline;
 }
@@ -123,7 +124,6 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
       config: { ...snap.state.config },
       moves: snap.state.moves,
       result: snap.state.result ?? 'draw',
-      map: snap.map,
     };
   }
 
@@ -169,7 +169,6 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
                   myName: init.myName,
                   config: init.config,
                   hostSymbol: init.hostSymbol,
-                  map: init.map,
                 },
             {
               onChange: (snap) => {
@@ -181,7 +180,7 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
                   return snap;
                 });
                 if (snap.phase === 'playing') setStage('playing');
-                onMapChange(snap.map);
+                onMapChange(snap.state.config.map);
                 // Toda mudança de estado real limpa avisos transitórios.
                 setUndoSent(false);
                 // RN-CONEXAO-08: jogada nova depois do pedido invalida o
@@ -206,7 +205,6 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
                     config: { ...snap.state.config },
                     moves: snap.state.moves,
                     result,
-                    map: snap.map,
                   }).id;
                 } else if (prevResultRef.current !== null && result === null) {
                   if (libraryIdRef.current !== null) {
@@ -224,7 +222,6 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
                   moves: snap.state.moves,
                   score: snap.score,
                   names: snap.names,
-                  map: snap.map,
                 };
                 if (snap.phase === 'peer-left' || snap.phase === 'version-mismatch') {
                   clearOnline(roomCode, init.role);
@@ -391,6 +388,11 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
     session?.playMove(path);
   }
 
+  function handlePlayCard(card: CardId, target: CardTarget) {
+    setUndoDenied(false);
+    session?.playCard(card, target);
+  }
+
   if (replayOpen) {
     return (
       <ReplayScreen
@@ -427,6 +429,8 @@ export function OnlineGame({ msgs, init, onExit, onMapChange }: OnlineGameProps)
         player1Symbol={snapshot.hostSymbol}
         score={snapshot.score}
         onMove={handleMove}
+        viewerSymbol={mySymbol}
+        onPlayCard={handlePlayCard}
         onUndo={() => {
           if (snapshot.state.moves.some((m) => m.player === mySymbol)) {
             setUndoSent(true);

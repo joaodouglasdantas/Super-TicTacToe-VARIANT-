@@ -1,8 +1,7 @@
 // Protocolo p2p do Super TicTacToe, conforme a Contract Spec P2P (v = 1).
 
-import type { GameConfig, Move, Path, Player } from '../engine';
+import type { CardId, GameConfig, Move, Path, Player } from '../engine';
 import type { SessionScore } from '../storage/persist';
-import type { MapTheme } from '../theme/maps';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -14,9 +13,11 @@ export const MAX_MESSAGE_BYTES = 4096;
 
 export type P2PMessage =
   | { t: 'hello'; v: number; name: string }
-  | { t: 'config'; config: GameConfig; hostSymbol: Player; names: [string, string]; map: MapTheme }
+  | { t: 'config'; config: GameConfig; hostSymbol: Player; names: [string, string] }
   | { t: 'accept' }
-  | { t: 'move'; seq: number; path: Path }
+  // spec CARTAS: card/path2/cellIndex só presentes quando a jogada é uma
+  // carta (Move.card definido) — mesmo formato que o histórico usa internamente.
+  | { t: 'move'; seq: number; path: Path; card?: CardId; path2?: Path; cellIndex?: number }
   | {
       t: 'sync';
       config: GameConfig;
@@ -24,7 +25,6 @@ export type P2PMessage =
       names: [string, string];
       moves: Move[];
       score: SessionScore;
-      map: MapTheme;
     }
   | { t: 'undoReq'; toSeq: number }
   | { t: 'undoRes'; toSeq: number; ok: boolean }

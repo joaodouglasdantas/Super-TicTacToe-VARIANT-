@@ -109,14 +109,17 @@ Igual ao mapa (`randomMapTheme`, spec [[MAPAS]]): o sorteio de qual carta é con
 
 ## 9. Rastreabilidade
 
-| Código | Implementação (planejada) | Verificação |
+| Código | Implementação (real) | Verificação |
 |---|---|---|
-| REQ-CARTAS-01, 08, 09 | `src/theme/cards.ts` (novo): baralhos por mapa | testes unitários de sorteio |
-| REQ-CARTAS-02, 03, 05 | `src/engine/` (novo tipo `Action`), lógica de concessão | testes unitários |
-| REQ-CARTAS-04, 06, 07 | `src/ui/` (nova UI de mão de cartas) | testes e2e |
-| REQ-CARTAS-10 | `src/engine/` (undo sobre histórico de ações) | teste unitário |
-| REQ-CARTAS-11 | `src/p2p/protocol.ts`, `session.ts` (ação de carta sincronizada) | teste de sessão p2p |
-| RN-CARTAS-01..07 | `src/engine/` (validação de alvo por carta) | testes unitários por carta |
-| AC-CARTAS-01..10 | ver REQs correspondentes acima | testes citados |
+| REQ-CARTAS-01, 08, 09 | `src/engine/cards.ts`: `CARD_DECKS`, `cardMap`, `cardRarity` (não `src/theme/`: baralho é regra de jogo, o motor não pode depender de `src/ui/`) | `tests/engine/cards.test.ts` |
+| REQ-CARTAS-02, 03, 05 | `src/engine/types.ts` (`Move.card/path2/cellIndex`, `Hands`, `GameState.hands/actionCount`); `src/engine/game.ts` (`grantIfNewlyWon`, chamado em `applyMove`) | `tests/engine/cards.test.ts` |
+| REQ-CARTAS-04, 06, 07 | `src/ui/CardHand.tsx` (mão + painel de alvo), `src/ui/cardTargets.ts` (alvos válidos via `validateCard`), `src/ui/cardMeta.ts`/`src/ui/icons.tsx` (nome/ícone/raridade), `src/ui/GameScreen.tsx` (`viewerSymbol` decide qual mão é nomeada — REQ-CARTAS-07 vale igual em local e online) | `tests/e2e/cards.spec.ts` |
+| REQ-CARTAS-10 | `src/engine/game.ts`: `undo` já reconstrói tudo por `replay`, mão incluída (nenhuma lógica extra necessária) | `tests/engine/cards.test.ts` |
+| REQ-CARTAS-11 | `src/p2p/protocol.ts` (`move` ganha `card/path2/cellIndex`), `src/p2p/session.ts` (`playCard`, `onMove` valida com `validateCard`/`applyAction`) | `tests/p2p/session.test.ts` |
+| RN-CARTAS-01..03 | `src/engine/game.ts`: `boardTargetable`, `isProtectedAgainst` | `tests/engine/cards.test.ts` |
+| RN-CARTAS-04 | `src/engine/board.ts`: `isLocked` comparado contra `actionCount` | `tests/engine/cards.test.ts` |
+| RN-CARTAS-05 | `src/engine/game.ts`: `validateCard` caso `estrela-da-sorte`; `src/ui/cardTargets.ts`: `starPositions` (recusa antes de confirmar) | `tests/engine/cards.test.ts` |
+| RN-CARTAS-06, 07 | `src/engine/game.ts`: `validateCard` (`fora-de-vez`, `partida-encerrada`, `carta-de-outro-mapa`) | `tests/engine/cards.test.ts` |
+| AC-CARTAS-01..10 | ver REQs/RNs correspondentes acima | `tests/engine/cards.test.ts`, `tests/e2e/cards.spec.ts` |
 
-Esta tabela é o ponto de partida do planejamento de implementação — será revisada no Gate 2 da skill `implementar-demanda` quando a implementação começar de fato (depois da remoção do modo bot).
+`Action` (Notas Técnicas) foi implementado como extensão de `Move` (campos opcionais `card`/`path2`/`cellIndex`) em vez de um novo tipo `{kind: 'move'|'card', ...}` — mesmo histórico heterogêneo, sem trocar o nome/formato de `GameState.moves` nem quebrar `serialize`/replay existentes. `applyAction(state, move)` é o ponto único usado por `replay`, `undo`, P2P sync e GIF.

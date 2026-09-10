@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { soundsForTransition } from '../audio/events';
 import { playMoveSounds, setMuted } from '../audio/sound';
-import { applyMove, createGame, otherPlayer, replay, serialize, undo } from '../engine';
-import type { GameState, Path, Player } from '../engine';
+import { applyCard, applyMove, createGame, otherPlayer, replay, serialize, undo } from '../engine';
+import type { CardId, GameState, Path, Player } from '../engine';
+import type { CardTarget } from './CardHand';
 import { detectLanguage, messages } from '../i18n';
 import type { Language } from '../i18n';
 import {
@@ -18,7 +19,6 @@ import type { SavedOnline } from '../storage/persist';
 import { addToLibrary, removeFromLibrary } from '../replay/library';
 import type { LibraryEntry } from '../replay/library';
 import { normalizeRoomCode } from '../p2p/protocol';
-import { randomMapTheme } from '../theme/maps';
 import type { MapTheme } from '../theme/maps';
 import { IconInfo, IconLibrary, IconSettings, IconSoundOff, IconSoundOn } from './icons';
 import { LibraryScreen } from './LibraryScreen';
@@ -39,7 +39,6 @@ interface Match {
   score: SessionScore;
   counted: boolean; // o resultado desta partida já entrou no placar?
   libraryId: string | null; // entrada criada na biblioteca quando a partida terminou
-  map: MapTheme; // spec MAPAS: sorteado ao criar, mantido em revanche/retomada
 }
 
 const zeroScore: SessionScore = { X: 0, O: 0, draws: 0 };
@@ -56,11 +55,11 @@ export function App() {
   const [replayEntry, setReplayEntry] = useState<LibraryEntry | null>(null);
   const [leaveAsk, setLeaveAsk] = useState(false);
   // Mapa da sessão online em andamento: o host já sabe o dele de cara
-  // (online.map); o guest só sabe depois do handshake (OnlineGame chama
-  // onMapChange quando a sessão informa, RN-MAPAS-03).
+  // (dentro de online.config.map); o guest só sabe depois do handshake
+  // (OnlineGame chama onMapChange quando a sessão informa, RN-MAPAS-03).
   const [onlineMap, setOnlineMap] = useState<MapTheme>('galaxy');
   useEffect(() => {
-    if (online) setOnlineMap(online.map ?? online.saved?.map ?? 'galaxy');
+    if (online) setOnlineMap(online.config?.map ?? online.saved?.config.map ?? 'galaxy');
   }, [online]);
 
   // REQ-MENU-05: um link de convite (?join=CODIGO) pula a home e vai direto
@@ -118,7 +117,6 @@ export function App() {
         playerNames: m.playerNames,
         player1Symbol: m.player1Symbol,
         score: m.score,
-        map: m.map,
       });
     } else {
       clearMatch();
@@ -144,7 +142,6 @@ export function App() {
       score: match?.score ?? zeroScore,
       counted: false,
       libraryId: null,
-      map: randomMapTheme(), // RN-MAPAS-03: quem cria a partida sorteia
     });
   }
 
@@ -168,17 +165,10 @@ export function App() {
       config: { ...state.config },
       moves: state.moves,
       result: state.result ?? 'draw',
-      map: m.map,
     };
   }
 
-  function applyPath(current: Match, path: Path) {
-    let state: GameState;
-    try {
-      state = applyMove(current.state, path);
-    } catch {
-      return; // REQ-STT-02: jogada inválida não altera nada
-    }
+  function commitNewState(current: Match, state: GameState) {
     playTransition(current.state, state);
     let { score, counted, libraryId } = current;
     if (state.result !== null && !counted) {
@@ -192,9 +182,32 @@ export function App() {
     setAndPersist({ ...current, state, score, counted, libraryId });
   }
 
+  function applyPath(current: Match, path: Path) {
+    let state: GameState;
+    try {
+      state = applyMove(current.state, path);
+    } catch {
+      return; // REQ-STT-02: jogada inválida não altera nada
+    }
+    commitNewState(current, state);
+  }
+
   function handleHumanMove(path: Path) {
     if (!match || match.state.result !== null) return;
     applyPath(match, path);
+  }
+
+  // spec CARTAS (REQ-CARTAS-06): jogar carta consome a vez, mesmo motor de
+  // commit que uma jogada normal (placar, biblioteca, som, persistência).
+  function handlePlayCard(card: CardId, target: CardTarget) {
+    if (!match || match.state.result !== null) return;
+    let state: GameState;
+    try {
+      state = applyCard(match.state, { player: match.state.currentPlayer, card, ...target });
+    } catch {
+      return;
+    }
+    commitNewState(match, state);
   }
 
   function handleUndo() {
@@ -241,7 +254,6 @@ export function App() {
         score: pendingResume.score,
         counted: false,
         libraryId: null,
-        map: pendingResume.map, // RN-MAPAS-03/REQ-MAPAS-03: retomada não sorteia de novo
       });
     } catch {
       clearMatch();
@@ -262,6 +274,7 @@ export function App() {
           clearVariant: false,
           tiebreak: 'majority',
           startingPlayer: prefs.player1Symbol,
+          map: 'galaxy', // nunca usado de verdade: SetupScreen sorteia de novo ao confirmar
         },
       playerNames: prefs.playerNames,
       player1Symbol: prefs.player1Symbol,
@@ -278,7 +291,13 @@ export function App() {
   // Mapa da partida ativa (spec MAPAS): fora de uma partida específica
   // (biblioteca, diálogos de retomar) cai no padrão galáxia (RN-MAPAS-02).
   const currentMap: MapTheme =
-    match !== null ? match.map : replayEntry !== null ? replayEntry.map : online !== null ? onlineMap : 'galaxy';
+    match !== null
+      ? match.state.config.map
+      : replayEntry !== null
+        ? replayEntry.config.map
+        : online !== null
+          ? onlineMap
+          : 'galaxy';
 
   return (
     <div className={`app${showHome ? ' home-minimal' : ''}`} data-map={showHome ? undefined : currentMap}>
@@ -424,6 +443,8 @@ export function App() {
           onMove={handleHumanMove}
           onUndo={handleUndo}
           onRematch={handleRematch}
+          viewerSymbol={match.state.currentPlayer}
+          onPlayCard={handlePlayCard}
           onChangeSettings={() => {
             // REQ-CONEXAO-06: partida em andamento pede confirmação.
             if (match.state.result === null) setLeaveAsk(true);

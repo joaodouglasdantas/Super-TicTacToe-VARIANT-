@@ -4,7 +4,6 @@
 import type { GameConfig, Move, Player, SerializedGame } from '../engine';
 import type { Language } from '../i18n';
 import { normalizeMap } from '../theme/maps';
-import type { MapTheme } from '../theme/maps';
 
 export interface Preferences {
   language: Language | null;
@@ -25,7 +24,6 @@ export interface SavedMatch {
   playerNames: [string, string];
   player1Symbol: Player;
   score: SessionScore;
-  map: MapTheme;
 }
 
 // GAR-P2P-05: estado da partida online persistido por sala pra reconexão.
@@ -38,7 +36,6 @@ export interface SavedOnline {
   moves: Move[];
   score: SessionScore;
   names: [string, string];
-  map: MapTheme;
 }
 
 const PREFS_KEY = 'stt.prefs';
@@ -82,7 +79,7 @@ export function loadMatch(): SavedMatch | null {
   const match = read<SavedMatch>(MATCH_KEY);
   if (!match || !Array.isArray(match.game?.moves)) return null;
   // Partida salva antes do mapa existir não trazia o campo (REQ-MAPAS-05).
-  return { ...match, map: normalizeMap(match.map) };
+  return { ...match, game: { ...match.game, config: { ...match.game.config, map: normalizeMap(match.game.config?.map) } } };
 }
 
 export function saveMatch(match: SavedMatch): void {
@@ -115,7 +112,10 @@ export function loadOnline(): SavedOnline | null {
   const valid = (s: SavedOnline | undefined) =>
     s && typeof s.code === 'string' && Array.isArray(s.moves) ? s : null;
   // REQ-MAPAS-05: sala salva antes do mapa existir vira galáxia.
-  const withMap = (s: SavedOnline): SavedOnline => ({ ...s, map: normalizeMap(s.map) });
+  const withMap = (s: SavedOnline): SavedOnline => ({
+    ...s,
+    config: { ...s.config, map: normalizeMap(s.config?.map) },
+  });
   try {
     const self = sessionStorage.getItem(SELF_KEY);
     if (self && valid(store[self])) return withMap(store[self]);

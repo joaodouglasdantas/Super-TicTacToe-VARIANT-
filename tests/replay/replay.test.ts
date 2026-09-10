@@ -30,6 +30,7 @@ const classic: GameConfig = {
   clearVariant: false,
   tiebreak: 'majority',
   startingPlayer: 'X',
+  map: 'galaxy',
 };
 
 function finishedMatch(): Omit<LibraryEntry, 'id' | 'finishedAt'> {
@@ -43,7 +44,6 @@ function finishedMatch(): Omit<LibraryEntry, 'id' | 'finishedAt'> {
     config: classic,
     moves,
     result: 'X',
-    map: 'galaxy',
   };
 }
 

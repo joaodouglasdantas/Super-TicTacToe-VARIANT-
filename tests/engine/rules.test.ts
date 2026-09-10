@@ -13,6 +13,7 @@ const classic: GameConfig = {
   clearVariant: false,
   tiebreak: 'majority',
   startingPlayer: 'X',
+  map: 'galaxy',
 };
 
 describe('jogada direcionada (RN-STT-01, AC-STT-01)', () => {

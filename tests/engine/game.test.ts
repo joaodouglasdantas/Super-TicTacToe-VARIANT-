@@ -14,6 +14,7 @@ const classic: GameConfig = {
   clearVariant: false,
   tiebreak: 'majority',
   startingPlayer: 'X',
+  map: 'galaxy',
 };
 
 describe('configuração imutável (REQ-STT-03, RN-STT-08)', () => {

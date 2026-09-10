@@ -2,16 +2,16 @@
 // qualquer. Não conhece PeerJS nem React, o que a torna testável a seco.
 
 import {
-  applyMove,
+  applyAction,
   createGame,
   otherPlayer,
   replay,
+  validateCard,
   validateMove,
 } from '../engine';
-import type { GameConfig, GameState, Move, Path, Player } from '../engine';
+import type { CardId, GameConfig, GameState, Move, Path, Player } from '../engine';
 import type { SessionScore } from '../storage/persist';
 import { normalizeMap } from '../theme/maps';
-import type { MapTheme } from '../theme/maps';
 import {
   decodeMessage,
   encodeMessage,
@@ -34,7 +34,6 @@ export interface SessionSnapshot {
   names: [string, string]; // [host, guest]
   hostSymbol: Player;
   phase: SessionPhase;
-  map: MapTheme; // spec MAPAS: sorteado pelo host, sincronizado pro guest
 }
 
 export interface SessionEvents {
@@ -48,23 +47,35 @@ export interface SessionInit {
   role: Role;
   myName: string;
   // Host de partida nova define; host/guest em retomada trazem o estado salvo.
+  // O mapa (spec MAPAS) já vem dentro de config.map, sorteado por quem criou
+  // a partida (RN-MAPAS-03) — guest de partida nova nunca sorteia, só adota
+  // o que chega em 'config'.
   config?: GameConfig;
   hostSymbol?: Player;
-  // Sorteado por quem cria a partida nova (RN-MAPAS-03); sem valor, vira
-  // galáxia (normalizeMap). Guest de partida nova adota o que chega em 'config'.
-  map?: MapTheme;
   saved?: {
     config: GameConfig;
     hostSymbol: Player;
     moves: Move[];
     score: SessionScore;
     names: [string, string];
-    map: MapTheme;
   };
   // Heartbeat (GAR-P2P-06): ping a cada heartbeatMs; sem tráfego por staleMs,
   // a conexão é dada como caída. heartbeatMs 0 desliga (usado em testes).
   heartbeatMs?: number;
   staleMs?: number;
+}
+
+// REQ-MAPAS-05: config vinda de fora (init/saved/mensagem) pode ser de antes
+// do mapa existir — normaliza sempre que `this.config` é definido a partir
+// de dado externo.
+function withNormalizedMap(config: GameConfig): GameConfig {
+  return { ...config, map: normalizeMap(config.map) };
+}
+
+// Mesma chave de comparação usada em duplicata (onMove) e no destino
+// completo de uma jogada — inclui os campos de carta quando presentes.
+function moveKey(m: { path: Path; card?: CardId; path2?: Path; cellIndex?: number }): string {
+  return JSON.stringify({ path: m.path, card: m.card, path2: m.path2, cellIndex: m.cellIndex });
 }
 
 export class P2PSession {
@@ -75,7 +86,6 @@ export class P2PSession {
 
   private config: GameConfig | null = null;
   private hostSymbol: Player = 'X';
-  private map: MapTheme = 'galaxy';
   private names: [string, string];
   private state: GameState | null = null;
   private score: SessionScore = { X: 0, O: 0, draws: 0 };
@@ -93,20 +103,18 @@ export class P2PSession {
     this.names = init.role === 'host' ? [this.myName, ''] : ['', this.myName];
 
     if (init.saved) {
-      this.config = init.saved.config;
+      this.config = withNormalizedMap(init.saved.config);
       this.hostSymbol = init.saved.hostSymbol;
-      this.map = normalizeMap(init.saved.map);
       this.names = init.saved.names;
       this.score = init.saved.score;
-      this.state = replay({ config: init.saved.config, moves: init.saved.moves });
+      this.state = replay({ config: this.config, moves: init.saved.moves });
     } else if (init.role === 'host') {
       if (!init.config || !init.hostSymbol) {
         throw new Error('host de partida nova precisa de config e hostSymbol');
       }
-      this.config = init.config;
+      this.config = withNormalizedMap(init.config);
       this.hostSymbol = init.hostSymbol;
-      this.map = normalizeMap(init.map); // RN-MAPAS-03: só quem cria sorteia
-      this.state = createGame(init.config);
+      this.state = createGame(this.config);
     }
 
     transport.onMessage((raw) => this.receive(raw));
@@ -152,7 +160,6 @@ export class P2PSession {
       names: this.names,
       hostSymbol: this.hostSymbol,
       phase: this.phase,
-      map: this.map,
     };
   }
 
@@ -162,9 +169,21 @@ export class P2PSession {
     if (this.state.currentPlayer !== this.mySymbol) return;
     if (validateMove(this.state, path) !== null) return;
     const seq = this.state.moves.length;
-    this.applyValidated(path);
+    this.applyValidated({ player: this.mySymbol, path });
     this.pendingUndo = null;
     this.send({ t: 'move', seq, path });
+  }
+
+  // spec CARTAS: jogar uma carta da mão (REQ-CARTAS-06, consome a vez).
+  playCard(card: CardId, target: { path: Path; path2?: Path; cellIndex?: number }): void {
+    if (!this.state || this.phase !== 'playing') return;
+    if (this.state.currentPlayer !== this.mySymbol) return;
+    const move: Move = { player: this.mySymbol, card, ...target };
+    if (validateCard(this.state, move) !== null) return;
+    const seq = this.state.moves.length;
+    this.applyValidated(move);
+    this.pendingUndo = null;
+    this.send({ t: 'move', seq, path: target.path, card, path2: target.path2, cellIndex: target.cellIndex });
   }
 
   // GAR-P2P-07: desfazer só com consentimento. toSeq = histórico após desfazer
@@ -258,7 +277,6 @@ export class P2PSession {
         config: this.config!,
         hostSymbol: this.hostSymbol,
         names: this.names,
-        map: this.map,
       });
     } else if (name) {
       this.names = [name, this.names[1]];
@@ -269,11 +287,10 @@ export class P2PSession {
   private onConfig(msg: Extract<P2PMessage, { t: 'config' }>): void {
     if (this.role !== 'guest') return;
     if (this.state === null) {
-      // Partida nova: adota a configuração do host (RN-MAPAS-03, guest nunca sorteia).
-      this.config = msg.config;
+      // Partida nova: adota a configuração do host, mapa incluso (RN-MAPAS-03).
+      this.config = withNormalizedMap(msg.config);
       this.hostSymbol = msg.hostSymbol;
-      this.map = normalizeMap(msg.map);
-      this.state = createGame(msg.config);
+      this.state = createGame(this.config);
     }
     // Retomada: mantém o estado local (config é imutável); só atualiza nomes.
     this.names = [sanitizeName(msg.names[0]) || this.names[0], this.names[1]];
@@ -295,37 +312,37 @@ export class P2PSession {
   private onMove(msg: Extract<P2PMessage, { t: 'move' }>): void {
     if (!this.state || this.phase !== 'playing') return;
     const moves = this.state.moves;
+    const incoming = { path: msg.path, card: msg.card, path2: msg.path2, cellIndex: msg.cellIndex };
     // GAR-P2P-02: duplicata idêntica é ignorada.
     if (msg.seq < moves.length) {
       const known = moves[msg.seq];
-      if (known && JSON.stringify(known.path) === JSON.stringify(msg.path)) return;
+      if (known && moveKey(known) === moveKey(incoming)) return;
       return this.sendSync(); // duplicata divergente: autocorreção
     }
     if (msg.seq > moves.length) return this.sendSync(); // lacuna: autocorreção
+    if (this.state.currentPlayer === this.mySymbol) return this.sendSync();
+    const other = this.state.currentPlayer;
+    const move: Move = { player: other, ...incoming };
     // Vez e validade conferidas pelo motor local (CL-P2P-03/04, GAR-P2P-04).
-    if (
-      this.state.currentPlayer === this.mySymbol ||
-      validateMove(this.state, msg.path) !== null
-    ) {
-      return this.sendSync();
-    }
-    this.applyValidated(msg.path);
+    const invalid = move.card ? validateCard(this.state, move) !== null : validateMove(this.state, move.path) !== null;
+    if (invalid) return this.sendSync();
+    this.applyValidated(move);
     this.pendingUndo = null;
   }
 
   private onSync(msg: Extract<P2PMessage, { t: 'sync' }>): void {
     // GAR-P2P-03: prevalece o histórico válido mais longo.
     let theirState: GameState;
+    const config = withNormalizedMap(msg.config);
     try {
-      theirState = replay({ config: msg.config, moves: msg.moves });
+      theirState = replay({ config, moves: msg.moves });
     } catch {
       return; // sync inválido é descartado; o meu estado segue de pé
     }
     const mine = this.state?.moves.length ?? -1;
     if (theirState.moves.length > mine) {
-      this.config = msg.config;
+      this.config = config;
       this.hostSymbol = msg.hostSymbol;
-      this.map = normalizeMap(msg.map);
       this.names = [sanitizeName(msg.names[0]), sanitizeName(msg.names[1])];
       this.state = theirState;
       this.score = msg.score;
@@ -345,8 +362,8 @@ export class P2PSession {
 
   // -- Internos --------------------------------------------------------------
 
-  private applyValidated(path: Path): void {
-    this.state = applyMove(this.state!, path);
+  private applyValidated(move: Move): void {
+    this.state = applyAction(this.state!, move);
     if (this.state.result !== null && !this.counted) {
       this.counted = true;
       if (this.state.result === 'draw') this.score = { ...this.score, draws: this.score.draws + 1 };
@@ -391,7 +408,6 @@ export class P2PSession {
       names: this.names,
       moves: this.state.moves,
       score: this.score,
-      map: this.map,
     });
   }
 

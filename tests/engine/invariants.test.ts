@@ -86,7 +86,7 @@ describe('invariantes em partidas aleatórias (motor completo)', () => {
         it(`${label}: 25 partidas válidas do início ao fim`, () => {
           for (let seed = 1; seed <= 25; seed++) {
             playRandomGame(
-              { depth, tiebreak, clearVariant, startingPlayer: seed % 2 ? 'X' : 'O' },
+              { depth, tiebreak, clearVariant, startingPlayer: seed % 2 ? 'X' : 'O', map: 'galaxy' },
               seed,
             );
           }
@@ -98,7 +98,7 @@ describe('invariantes em partidas aleatórias (motor completo)', () => {
   it('profundidade 3: partidas aleatórias mantêm os invariantes', () => {
     for (const tiebreak of tiebreaks) {
       playRandomGame(
-        { depth: 3, tiebreak, clearVariant: false, startingPlayer: 'X' },
+        { depth: 3, tiebreak, clearVariant: false, startingPlayer: 'X', map: 'galaxy' },
         42,
       );
     }
@@ -106,7 +106,7 @@ describe('invariantes em partidas aleatórias (motor completo)', () => {
 
   it('profundidade 3 com limpeza: termina e permanece válida', () => {
     playRandomGame(
-      { depth: 3, tiebreak: 'majority', clearVariant: true, startingPlayer: 'O' },
+      { depth: 3, tiebreak: 'majority', clearVariant: true, startingPlayer: 'O', map: 'galaxy' },
       7,
     );
   });
@@ -115,7 +115,7 @@ describe('invariantes em partidas aleatórias (motor completo)', () => {
     const seen = new Set<string>();
     for (let seed = 1; seed <= 60; seed++) {
       const state = playRandomGame(
-        { depth: 1, tiebreak: 'majority', clearVariant: false, startingPlayer: 'X' },
+        { depth: 1, tiebreak: 'majority', clearVariant: false, startingPlayer: 'X', map: 'galaxy' },
         seed,
       );
       seen.add(state.result as string);

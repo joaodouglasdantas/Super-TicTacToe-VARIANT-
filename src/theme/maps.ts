@@ -1,7 +1,11 @@
-// Mapas visuais sorteados por partida (spec MAPAS). Puramente cosmético
-// (RN-MAPAS-01): nenhuma regra de jogo depende do mapa.
+// Sorteio do mapa de uma partida nova (spec MAPAS). O tipo em si mora no
+// motor (src/engine/types.ts) desde a spec CARTAS, que deu a cada mapa seu
+// próprio baralho — deixou de ser só cosmético (RN-MAPAS-01 vale só pro
+// mapa em si; os efeitos de carta é que mexem em regra, não o mapa).
 
-export type MapTheme = 'galaxy' | 'beach';
+import type { MapTheme } from '../engine';
+
+export type { MapTheme };
 
 export const MAP_THEMES: MapTheme[] = ['galaxy', 'beach'];
 

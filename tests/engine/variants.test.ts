@@ -65,6 +65,7 @@ describe('variante de limpeza (RN-STT-04, AC-STT-06)', () => {
     clearVariant: true,
     tiebreak: 'majority',
     startingPlayer: 'X',
+    map: 'galaxy',
   };
 
   it('conquistar um tabuleiro limpa os não decididos e preserva os decididos', () => {

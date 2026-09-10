@@ -21,6 +21,7 @@ const classic: GameConfig = {
   clearVariant: false,
   tiebreak: 'majority',
   startingPlayer: 'X',
+  map: 'galaxy',
 };
 
 // X abre em [0,0], direcionando O pro tabuleiro 0; a partir daí o roteiro

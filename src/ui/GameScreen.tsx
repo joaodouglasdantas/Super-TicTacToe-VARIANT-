@@ -1,8 +1,11 @@
 import { allowedBoards } from '../engine';
-import type { GameState, Path, Player } from '../engine';
+import type { CardId, GameState, Path, Player } from '../engine';
 import type { Messages } from '../i18n';
 import type { SessionScore } from '../storage/persist';
 import { BoardView } from './BoardView';
+import { CardHand } from './CardHand';
+import type { CardTarget } from './CardHand';
+import { describeMove } from './moveHistory';
 
 interface GameScreenProps {
   msgs: Messages;
@@ -16,6 +19,9 @@ interface GameScreenProps {
   onChangeSettings: () => void;
   onOpenReplay?: () => void;
   onDownloadGif?: () => void;
+  // spec CARTAS: de quem é a mão mostrada nesta tela (ver CardHand.tsx).
+  viewerSymbol: Player;
+  onPlayCard: (card: CardId, target: CardTarget) => void;
 }
 
 export function GameScreen(props: GameScreenProps) {
@@ -31,6 +37,8 @@ export function GameScreen(props: GameScreenProps) {
     onChangeSettings,
     onOpenReplay,
     onDownloadGif,
+    viewerSymbol,
+    onPlayCard,
   } = props;
 
   const nameOf = (player: Player) => {
@@ -70,6 +78,10 @@ export function GameScreen(props: GameScreenProps) {
         tiebreak={state.config.tiebreak}
         onCellClick={onMove}
       />
+
+      {state.result === null && (
+        <CardHand msgs={msgs} state={state} viewerSymbol={viewerSymbol} onPlayCard={onPlayCard} />
+      )}
 
       <div className="controls">
         <button
@@ -127,8 +139,7 @@ export function GameScreen(props: GameScreenProps) {
             {state.moves.map((move, i) => (
               <li key={i}>
                 <span className={`mark-${move.player}`}>{move.player}</span>{' '}
-                {msgs.boardLabel} {move.path[0] + 1}, {msgs.cellLabel}{' '}
-                {move.path[move.path.length - 1] + 1}
+                {describeMove(msgs, move)}
               </li>
             ))}
           </ol>
