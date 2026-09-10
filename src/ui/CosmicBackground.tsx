@@ -1,23 +1,11 @@
 import { useMemo } from 'react';
+import { mulberry32 } from './random';
 
 // Camada decorativa do tema neon-galáctico (REQ-NEON-02, 06): estrelas
 // cintilantes, partículas de luz subindo e criaturinhas flutuando devagar
 // pelo fundo. Puramente visual: nunca captura clique/toque nem aparece pra
 // leitor de tela (RN-NEON-02), e as animações contínuas somem sob
 // prefers-reduced-motion (RN-NEON-04, regra em themes.css).
-
-// Gerador determinístico (mesma semente = mesmo céu a cada carregamento,
-// sem "pulo" de layout entre renders do React).
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 interface Star {
   left: number;

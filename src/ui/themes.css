@@ -30,10 +30,29 @@
   --accent: var(--mark-o);
   --glow-soft: 0 0 4px currentColor, 0 0 10px currentColor;
   --glow-strong: 0 0 6px currentColor, 0 0 16px currentColor, 0 0 32px currentColor;
+  --title-glow:
+    0 0 6px var(--mark-o), 0 0 18px rgba(41, 224, 255, 0.5), 0 0 34px rgba(143, 107, 255, 0.35);
   /* Mesma duração que o som daquele risco (clipe ÷ velocidade de reprodução
      em src/audio/sound.ts), pro traço desenhado acompanhar o traço ouvido. */
   --strike-dur-small: 0.382s;
   --strike-dur-big: 0.553s;
+}
+
+/* Tela inicial (spec NEON, home): visual simples, preto e branco, sem o
+   brilho neon — reservado pro jogo em si, onde o tema (galáxia por enquanto,
+   outros mapas depois) vira parte da partida. Sobrescreve só as variáveis de
+   cor; toda a estrutura (botões, cartões, campos) já é escrita em cima
+   delas, então não precisa repetir regra nenhuma aqui. */
+.home-minimal {
+  --ink: #ffffff;
+  --ink-soft: #c7c7c7;
+  --line: #ffffff;
+  --line-soft: rgba(255, 255, 255, 0.35);
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --accent: #ffffff;
+  --mark-x: #ffffff;
+  --mark-o: #ffffff;
+  --title-glow: 0 0 10px rgba(255, 255, 255, 0.55);
 }
 
 * {
@@ -63,6 +82,13 @@ body {
 }
 
 header {
+  /* Contexto de empilhamento próprio: sem isso, o título (texto com
+     text-shadow grande) ficava atrás da camada decorativa de fundo
+     (position:fixed) em vez de na frente, mesmo com .app já em z-index:1 —
+     glow de texto parece exigir seu próprio contexto pra não ser
+     "espremido" junto da camada de trás por engano. */
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -77,10 +103,7 @@ h1 {
   letter-spacing: 0.04em;
   margin: 0.5rem 0;
   color: var(--ink);
-  text-shadow:
-    0 0 6px var(--mark-o),
-    0 0 18px rgba(41, 224, 255, 0.5),
-    0 0 34px rgba(143, 107, 255, 0.35);
+  text-shadow: var(--title-glow);
 }
 
 h2,
@@ -1005,5 +1028,117 @@ input:focus-visible {
   }
   .cosmic-particle-wrap {
     display: none;
+  }
+}
+
+/* ---- Fundo da tela inicial (spec NEON, home): preto puro + planetas de
+   kits variados flutuando (lava, gelo, colorido, galáxia, estranho), só
+   gradiente CSS, sem asset externo. Mesma regra de nunca capturar
+   clique/toque do resto das camadas decorativas. ---- */
+
+.planet-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #000;
+}
+
+.planet-orbit {
+  position: absolute;
+  animation-name: planet-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.planet {
+  display: block;
+  border-radius: 50%;
+  position: relative;
+  animation-name: planet-pulse;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.planet-lava {
+  background: radial-gradient(circle at 34% 30%, #ffe08a, #ff7a1a 42%, #7a1600 76%, #240500 100%);
+  box-shadow: 0 0 22px 4px rgba(255, 106, 0, 0.45);
+}
+
+.planet-ice {
+  background: radial-gradient(circle at 34% 30%, #f2feff, #8fe0ff 45%, #2a6f9e 80%, #0a2233 100%);
+  box-shadow: 0 0 22px 4px rgba(143, 224, 255, 0.45);
+}
+
+.planet-rainbow {
+  background: conic-gradient(from 0deg, #ff5f6d, #ffc371, #f9f871, #6dffb3, #5ec8ff, #a26dff, #ff5f6d);
+  box-shadow: 0 0 22px 4px rgba(255, 255, 255, 0.3);
+}
+
+.planet-galaxy {
+  background:
+    radial-gradient(circle at 70% 75%, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.4) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 55% 45%, rgba(255, 255, 255, 0.6) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 34% 30%, #cdb6ff, #7a4fe0 45%, #2c1666 80%, #0a0420 100%);
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%;
+  box-shadow: 0 0 22px 4px rgba(143, 107, 255, 0.5);
+}
+
+/* "Bem estranho": um planeta-olho, com íris fora de centro. */
+.planet-weird {
+  background: radial-gradient(circle at 50% 50%, #f4ecd8, #d8c9a3 70%, #8a7850 100%);
+  box-shadow: 0 0 18px 3px rgba(244, 236, 216, 0.4);
+}
+
+.planet-weird::after {
+  content: '';
+  position: absolute;
+  top: 28%;
+  left: 32%;
+  width: 38%;
+  height: 38%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #1a1a1a 0 22%, #6dffb3 24% 70%, #1a1a1a 72% 100%);
+}
+
+.planet.has-ring::before {
+  content: '';
+  position: absolute;
+  inset: -18% -42%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  transform: rotate(-18deg) scaleY(0.32);
+}
+
+@keyframes planet-drift {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 3vw -3vh;
+  }
+}
+
+@keyframes planet-pulse {
+  from {
+    transform: scale(0.96);
+  }
+  to {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planet-orbit,
+  .planet {
+    animation: none;
   }
 }

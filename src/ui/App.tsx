@@ -22,6 +22,7 @@ import { normalizeRoomCode } from '../p2p/protocol';
 import { CosmicBackground } from './CosmicBackground';
 import { IconInfo, IconLibrary, IconSettings, IconSoundOff, IconSoundOn } from './icons';
 import { LibraryScreen } from './LibraryScreen';
+import { PlanetBackground } from './PlanetBackground';
 import { OnlineGame } from './OnlineGame';
 import type { OnlineInit } from './OnlineGame';
 import type { MatchMode, Preferences, SavedMatch, SessionScore } from '../storage/persist';
@@ -304,9 +305,15 @@ export function App() {
       : match.playerNames
     : null;
 
+  // Tela inicial (spec NEON, home): fundo de planetas e visual simples
+  // (preto/branco), sem o brilho neon — que fica reservado pro jogo em si
+  // (mesma condição que decide quando <SetupScreen> aparece, abaixo).
+  const showHome =
+    replayEntry === null && !libraryOpen && !online && !pendingOnline && !pendingResume && match === null;
+
   return (
-    <div className="app">
-      <CosmicBackground />
+    <div className={`app${showHome ? ' home-minimal' : ''}`}>
+      {showHome ? <PlanetBackground /> : <CosmicBackground />}
       <header>
         <h1>{msgs.appTitle}</h1>
         <div className="header-controls">

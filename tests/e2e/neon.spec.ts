@@ -12,23 +12,33 @@ test('não existe mais alternador de tema nem textos "Caderno"/"Lousa" (AC-NEON-
   await expect(page.getByTestId('settings-modal')).not.toContainText(/Caderno|Lousa|Notebook|Chalkboard/);
 });
 
-test('o fundo decorativo nunca intercepta clique no tabuleiro (AC-NEON-05)', async ({ page }) => {
+test('o fundo decorativo nunca intercepta clique (AC-NEON-05, home e jogo)', async ({ page }) => {
   await page.goto('/');
-  const pointerEvents = await page.locator('.cosmic-bg').evaluate((el) => getComputedStyle(el).pointerEvents);
-  expect(pointerEvents).toBe('none');
-
+  const homePointerEvents = await page.locator('.planet-bg').evaluate((el) => getComputedStyle(el).pointerEvents);
+  expect(homePointerEvents).toBe('none');
   await page.getByTestId('mode-local').click();
   await page.getByTestId('start').click();
+
+  const gamePointerEvents = await page.locator('.cosmic-bg').evaluate((el) => getComputedStyle(el).pointerEvents);
+  expect(gamePointerEvents).toBe('none');
   await page.getByTestId('cell-4.4').click();
   await expect(page.getByTestId('cell-4.4')).toHaveText('X');
 });
 
-test('animações decorativas somem sob prefers-reduced-motion (AC-NEON-06)', async ({ page }) => {
+test('animações decorativas somem sob prefers-reduced-motion (AC-NEON-06, home e jogo)', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const animationName = await page
+  const planetAnim = await page
+    .locator('.planet-orbit')
+    .first()
+    .evaluate((el) => getComputedStyle(el).animationName);
+  expect(planetAnim).toBe('none');
+
+  await page.getByTestId('mode-local').click();
+  await page.getByTestId('start').click();
+  const starAnim = await page
     .locator('.cosmic-star')
     .first()
     .evaluate((el) => getComputedStyle(el).animationName);
-  expect(animationName).toBe('none');
+  expect(starAnim).toBe('none');
 });
