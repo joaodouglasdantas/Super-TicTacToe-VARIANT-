@@ -61,17 +61,23 @@ test('retomar depois de recarregar mantém o mesmo mapa (AC-MAPAS-03)', async ({
 });
 
 test('partida salva sem campo de mapa (dado legado) não quebra e vira galáxia (AC-MAPAS-04)', async ({ page }) => {
+  // Força um mapa diferente do fallback: se o teste não forçasse, o sorteio
+  // real (50/50) poderia coincidir com 'galaxy' por acaso e mascarar uma
+  // falta de fallback de verdade (a asserção final só prova algo se o mapa
+  // ANTES de simular o dado legado for 'beach').
+  await forceMap(page, 'beach');
   await page.goto('/');
   await page.getByTestId('mode-local').click();
   await page.getByTestId('start').click();
   await page.getByTestId('cell-4.4').click();
 
-  // Simula uma partida salva antes do campo `map` existir.
+  // Simula uma partida salva antes do campo `map` existir (spec CARTAS
+  // moveu o campo pra dentro de `game.config`, ver src/storage/persist.ts).
   await page.evaluate(() => {
     const raw = localStorage.getItem('stt.match');
     if (!raw) return;
     const saved = JSON.parse(raw);
-    delete saved.map;
+    delete saved.game.config.map;
     localStorage.setItem('stt.match', JSON.stringify(saved));
   });
 
