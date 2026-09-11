@@ -8,19 +8,23 @@ export interface CardDef {
   rarity: CardRarity;
 }
 
-// REQ-CARTAS-08, 09: um baralho de 4 cartas por mapa (1 comum, 2 raras, 1 épica).
+// REQ-CARTAS-08, 09: um baralho de 5 cartas por mapa (1 comum, 2 raras, 2
+// épicas — Supernova/Maré Virada, a 5ª carta, dividem os 10% de sorteio
+// épico com a carta épica original, 5% cada).
 export const CARD_DECKS: Record<MapTheme, CardDef[]> = {
   galaxy: [
     { id: 'salto-estelar', rarity: 'common' },
     { id: 'buraco-negro', rarity: 'rare' },
     { id: 'estrela-da-sorte', rarity: 'rare' },
     { id: 'devorador-de-tabuleiro', rarity: 'epic' },
+    { id: 'supernova', rarity: 'epic' },
   ],
   beach: [
     { id: 'bolha-protecao', rarity: 'common' },
     { id: 'correnteza', rarity: 'rare' },
     { id: 'tempestade', rarity: 'rare' },
     { id: 'tsunami', rarity: 'epic' },
+    { id: 'mare-virada', rarity: 'epic' },
   ],
 };
 

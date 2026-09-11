@@ -4,6 +4,7 @@ import {
   getNode,
   isBoard,
   isLocked,
+  isProtectedAgainst,
   playableLeafBoards,
   resultOf,
 } from './board';
@@ -42,14 +43,17 @@ export function createGame(config: GameConfig): GameState {
 
 // Tabuleiros de profundidade 1 onde o jogador da vez pode jogar (REQ-STT-12).
 // RN-CARTAS-02: tabuleiro bloqueado conta como indisponível, igual a decidido.
+// RN-CARTAS-03: tabuleiro protegido contra o jogador da vez idem (Bolha de
+// Proteção virou escudo total — bloqueia jogada normal, não só carta).
 export function allowedBoards(state: GameState): Path[] {
   if (state.result !== null) return [];
   const { tiebreak } = state.config;
+  const blockedFor = state.currentPlayer;
   if (state.forcedPath !== null) {
-    const target = playableLeafBoards(state.board, tiebreak, state.forcedPath, state.actionCount);
+    const target = playableLeafBoards(state.board, tiebreak, state.forcedPath, state.actionCount, blockedFor);
     if (target.length > 0) return target;
   }
-  return playableLeafBoards(state.board, tiebreak, [], state.actionCount); // RN-STT-02
+  return playableLeafBoards(state.board, tiebreak, [], state.actionCount, blockedFor); // RN-STT-02
 }
 
 function startsWith(path: Path, prefix: Path): boolean {
@@ -207,20 +211,22 @@ export type CardError =
   | 'carta-de-outro-mapa'
   | 'alvo-invalido';
 
-function isProtectedAgainst(board: Board, actionCount: number, attacker: Player): boolean {
-  return (
-    board.protectedUntilAction !== undefined &&
-    actionCount < board.protectedUntilAction &&
-    board.protectedBy !== undefined &&
-    board.protectedBy !== attacker
-  );
-}
-
 // RN-CARTAS-01: só mira tabuleiro pequeno ainda aberto (nunca decidido).
 // RN-CARTAS-02: nem bloqueado. RN-CARTAS-03: nem protegido contra quem joga.
 function boardTargetable(board: Board | Player | null, tiebreak: Tiebreak, actionCount: number, player: Player): board is Board {
   if (!isBoard(board)) return false;
   if (resultOf(board, tiebreak) !== null) return false;
+  if (isLocked(board, actionCount)) return false;
+  if (isProtectedAgainst(board, actionCount, player)) return false;
+  return true;
+}
+
+// Supernova/Maré Virada (spec CARTAS v2): exceção deliberada à RN-CARTAS-01
+// — miram exatamente o oposto, um tabuleiro JÁ DECIDIDO, pra reabri-lo.
+// Bloqueio e proteção continuam valendo do mesmo jeito (RN-CARTAS-02/03).
+function decidedBoardTargetable(board: Board | Player | null, tiebreak: Tiebreak, actionCount: number, player: Player): board is Board {
+  if (!isBoard(board)) return false;
+  if (resultOf(board, tiebreak) === null) return false;
   if (isLocked(board, actionCount)) return false;
   if (isProtectedAgainst(board, actionCount, player)) return false;
   return true;
@@ -292,6 +298,20 @@ export function validateCard(state: GameState, move: Move): CardError | null {
       if (!boardTargetable(boardNode, tiebreak, actionCount, move.player)) return 'alvo-invalido';
       if (getNode(board, move.path) !== move.player) return 'alvo-invalido'; // só marca própria
       if (getNode(board, move.path2) !== null) return 'alvo-invalido';
+      return null;
+    }
+    case 'supernova': {
+      if (move.path.length !== depth - 1) return 'alvo-invalido';
+      const boardNode = getNode(board, move.path);
+      if (!decidedBoardTargetable(boardNode, tiebreak, actionCount, move.player)) return 'alvo-invalido';
+      return null;
+    }
+    case 'mare-virada': {
+      if (move.path.length !== depth - 1) return 'alvo-invalido';
+      const boardNode = getNode(board, move.path);
+      if (!decidedBoardTargetable(boardNode, tiebreak, actionCount, move.player)) return 'alvo-invalido';
+      // Só rouba vitória do adversário — mirar o próprio tabuleiro já vencido não faz sentido.
+      if (resultOf(boardNode, tiebreak) !== otherPlayer(move.player)) return 'alvo-invalido';
       return null;
     }
     default:
@@ -371,6 +391,23 @@ export function applyCard(state: GameState, move: Move): GameState {
       const boardNode = getNode(board, move.path.slice(0, -1)) as Board;
       boardNode.cells[move.path[move.path.length - 1]] = null;
       boardNode.cells[move.path2![move.path2!.length - 1]] = move.player;
+      break;
+    }
+    case 'supernova': {
+      // Reabre um tabuleiro já decidido (vitória de qualquer um, ou empate):
+      // apaga tudo, igual tsunami, só que o alvo é o oposto (decidido, não aberto).
+      const target = getNode(board, move.path) as Board;
+      target.cells = target.cells.map(() => null);
+      break;
+    }
+    case 'mare-virada': {
+      // Rouba um tabuleiro vencido pelo adversário: as marcas dele (o
+      // adversário, dono da vitória ali — já validado em validateCard)
+      // viram marcas de quem jogou a carta, revertendo o resultado a favor
+      // de quem jogou.
+      const target = getNode(board, move.path) as Board;
+      const boardWinner = otherPlayer(move.player);
+      target.cells = target.cells.map((c) => (c === boardWinner ? move.player : c));
       break;
     }
     default:

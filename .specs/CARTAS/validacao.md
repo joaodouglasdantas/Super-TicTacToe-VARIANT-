@@ -2,7 +2,9 @@
 
 ## 1. O que foi entregue
 
-Cada mapa (galáxia, praia) ganhou um baralho próprio de 4 cartas de evento (1 comum, 2 raras, 1 épica). Vencer um tabuleiro pequeno sorteia uma carta pro vencedor, que decide quando jogá-la (consome a vez, não acumula com jogada normal). O adversário vê só quantas cartas o outro tem, nunca quais. Pré-condição: o modo "Contra o bot" foi removido (entrega anterior a esta).
+Cada mapa (galáxia, praia) ganhou um baralho próprio de 5 cartas de evento (1 comum, 2 raras, 2 épicas — v2). Vencer um tabuleiro pequeno sorteia uma carta pro vencedor, que decide quando jogá-la (consome a vez, não acumula com jogada normal). O adversário vê só quantas cartas o outro tem, nunca quais. Pré-condição: o modo "Contra o bot" foi removido (entrega anterior a esta).
+
+**v2 (revisão pós-teste do usuário):** Bolha de Proteção virou escudo total (bloqueia jogada normal também, não só carta); o seletor de alvo virou uma grade 3x3 temática no lugar do `<select>` nativo; duas cartas novas — Supernova (galáxia) e Maré Virada (praia) — miram um tabuleiro **já decidido** pra reabri-lo/roubá-lo, o oposto de todas as outras 8.
 
 ## 2. Referência da demanda
 
@@ -85,16 +87,18 @@ Resultado esperado:
 - A mesma posição é marcada com seu símbolo nos dois tabuleiros escolhidos, numa única jogada
 - Se só existe um tabuleiro aberto com aquela posição vazia (ou nenhum), essa posição não aparece pra escolher — a carta nunca fica "meio jogável" (RN-CARTAS-05)
 
-### 5.6 Bolha de Proteção impede carta do adversário no tabuleiro protegido
+### 5.6 Bolha de Proteção impede carta E jogada normal do adversário no tabuleiro protegido (v2)
 Mapeia: AC-CARTAS-06, RN-CARTAS-03
 
 Passos:
 1. No mapa praia, um jogador joga "Bolha de Proteção" num tabuleiro seu
 2. No mesmo tabuleiro, o adversário tenta jogar qualquer carta que mire um tabuleiro (ex.: Tsunami)
+3. Ainda no mesmo tabuleiro, o adversário tenta uma jogada normal (clicar numa célula vazia dele)
 
 Resultado esperado:
 - O tabuleiro protegido não aparece na lista de alvos possíveis da carta do adversário
-- Jogadas normais (sem carta) continuam funcionando nele normalmente — a proteção é só contra carta
+- O tabuleiro protegido também não fica destacado como "jogável" pro adversário — clicar numa célula dele não faz nada (v2: escudo total, mudou do comportamento original que só bloqueava carta)
+- Quem protegeu continua jogando normalmente ali, e pode mirar o próprio tabuleiro com as próprias cartas
 
 ### 5.7 Online: efeito de carta chega idêntico aos dois lados
 Mapeia: AC-CARTAS-07, REQ-CARTAS-11
@@ -138,6 +142,28 @@ Passos:
 Resultado esperado:
 - O efeito da carta é desfeito (a marca apagada volta), porque desfazer sempre volta a jogada mais recente primeiro — não existe forma de desfazer a jogada que *concedeu* uma carta já jogada sem antes desfazer a própria jogada da carta (ordem cronológica)
 
+### 5.11 Supernova reabre um tabuleiro já decidido (v2)
+Mapeia: AC-CARTAS-11, REQ-CARTAS-12
+
+Passos:
+1. No mapa galáxia, feche um tabuleiro pequeno qualquer (vencido por X, O, ou empatado)
+2. Consiga "Supernova" na mão (épica) e jogue-a escolhendo esse tabuleiro decidido
+
+Resultado esperado:
+- No seletor de tabuleiro da Supernova, só tabuleiros **decididos** aparecem habilitados — os ainda abertos ficam desabilitados (o oposto de toda outra carta de tabuleiro)
+- Depois de jogar, o tabuleiro escolhido fica com todas as células vazias e volta a aceitar jogada de qualquer jogador
+
+### 5.12 Maré Virada rouba um tabuleiro vencido pelo adversário (v2)
+Mapeia: AC-CARTAS-12, AC-CARTAS-13, REQ-CARTAS-13
+
+Passos:
+1. No mapa praia, deixe o adversário vencer um tabuleiro pequeno
+2. Consiga "Maré Virada" na mão (épica) e jogue-a escolhendo esse tabuleiro
+
+Resultado esperado:
+- No seletor, só tabuleiros vencidos pelo ADVERSÁRIO aparecem — nem os seus próprios vencidos, nem tabuleiros empatados, nem abertos aparecem como opção
+- Depois de jogar, as marcas do adversário nesse tabuleiro viram suas; o tabuleiro passa a contar como vitória sua no placar do tabuleiro grande
+
 ## 6. Cenários de borda e erro
 
 ### 6.1 Bloqueio/proteção contam jogadas da partida inteira, não só daquele tabuleiro
@@ -157,7 +183,7 @@ Esperado: sem erro no console; a mão de cada jogador é recomputada do zero a p
 ## 7. Fora do escopo (NÃO testar)
 
 - Modo "Contra o bot" usando cartas — o modo não existe mais
-- Mais de 4 cartas por mapa, ou mapas além de galáxia e praia
+- Mapas além de galáxia e praia (o limite de "4 cartas por mapa" caiu na v2 — agora são 5)
 - Escolher qual carta específica receber — é sempre sorteio por raridade
 - Trocar ou descartar cartas manualmente sem jogá-las
 - Animação/apresentação elaborada de "revelar carta" — a mão é só ícone + nome + raridade, sem transição especial

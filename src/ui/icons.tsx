@@ -190,3 +190,24 @@ export function IconCardTsunami({ className }: IconProps) {
     </svg>
   );
 }
+
+export function IconCardSupernova({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+      <path d="M12 2.5v4.3M12 17.2v4.3M2.5 12h4.3M17.2 12h4.3" />
+      <path d="M5.3 5.3l3 3M15.7 15.7l3 3M18.7 5.3l-3 3M8.3 15.7l-3 3" />
+    </svg>
+  );
+}
+
+export function IconCardMareVirada({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4.5 9.5a7 7 0 0 1 12-4.8" />
+      <path d="M16 2.8v4.4h-4.4" />
+      <path d="M19.5 14.5a7 7 0 0 1-12 4.8" />
+      <path d="M8 21.2v-4.4h4.4" />
+    </svg>
+  );
+}

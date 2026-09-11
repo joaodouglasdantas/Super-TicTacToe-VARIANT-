@@ -139,6 +139,10 @@ const pt = {
   cardTempestadeDesc: 'Força a próxima jogada do adversário pra um tabuleiro escolhido.',
   cardTsunamiName: 'Tsunami',
   cardTsunamiDesc: 'Apaga todas as marcas de um tabuleiro aberto, deixando ele vazio de novo.',
+  cardSupernovaName: 'Supernova',
+  cardSupernovaDesc: 'Apaga todas as marcas de um tabuleiro já decidido (vencido ou empatado), reabrindo ele do zero.',
+  cardMareViradaName: 'Maré Virada',
+  cardMareViradaDesc: 'Rouba um tabuleiro vencido pelo adversário: as marcas dele viram suas.',
 };
 
 const en: typeof pt = {
@@ -278,6 +282,10 @@ const en: typeof pt = {
   cardTempestadeDesc: "Forces the opponent's next move into a board you choose.",
   cardTsunamiName: 'Tsunami',
   cardTsunamiDesc: 'Clears every mark from an open board, leaving it empty again.',
+  cardSupernovaName: 'Supernova',
+  cardSupernovaDesc: 'Clears every mark from an already-decided board (won or drawn), reopening it from scratch.',
+  cardMareViradaName: 'Turned Tide',
+  cardMareViradaDesc: "Steals a board your opponent won: their marks there become yours.",
 };
 
 export type Messages = typeof pt;

@@ -18,10 +18,12 @@ export type CardId =
   | 'buraco-negro'
   | 'estrela-da-sorte'
   | 'devorador-de-tabuleiro'
+  | 'supernova'
   | 'bolha-protecao'
   | 'correnteza'
   | 'tempestade'
-  | 'tsunami';
+  | 'tsunami'
+  | 'mare-virada';
 
 export type CardRarity = 'common' | 'rare' | 'epic';
 
@@ -57,8 +59,8 @@ export interface GameConfig {
 
 // Uma jogada normal tem só player+path. Uma jogada de carta (spec CARTAS)
 // marca `card` e reaproveita path/path2/cellIndex com um significado
-// diferente por carta — ver src/engine/cards.ts (`describeCardTarget`) pra a
-// tabela completa de como cada carta interpreta esses campos.
+// diferente por carta — ver os switches de validateCard/applyCard em
+// src/engine/game.ts pra como cada carta interpreta esses campos.
 export interface Move {
   player: Player;
   path: Path;

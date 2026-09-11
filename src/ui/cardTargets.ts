@@ -10,7 +10,14 @@ export const CELL_PATHS: Path[] = BOARD_PATHS.flatMap((b) =>
   Array.from({ length: 9 }, (_, c) => [...b, c]),
 );
 
-const BOARD_ONLY: CardId[] = ['devorador-de-tabuleiro', 'bolha-protecao', 'tempestade', 'tsunami'];
+const BOARD_ONLY: CardId[] = [
+  'devorador-de-tabuleiro',
+  'supernova',
+  'bolha-protecao',
+  'tempestade',
+  'tsunami',
+  'mare-virada',
+];
 const CELL_TARGET: CardId[] = ['salto-estelar', 'buraco-negro'];
 
 export type CardShape = 'board' | 'cell' | 'star' | 'current';

@@ -51,10 +51,10 @@ test('jogar uma carta consome a vez e aplica o efeito (AC-CARTAS-05, REQ-CARTAS-
 
   await page.getByTestId('hand-card-devorador-de-tabuleiro').click();
   await expect(page.getByTestId('card-target-panel')).toBeVisible();
-  const select = page.getByTestId('target-board');
-  await select.selectOption({ index: 1 }); // primeiro tabuleiro aberto candidato
-  const targetValue = await select.inputValue();
-  const targetBoard = targetValue.split('.')[0];
+  // Grade 3x3: tabuleiro 0 (índice 0) está decidido, então o primeiro
+  // candidato habilitado é o índice 1 ("tabuleiro 2").
+  const targetBoard = '1';
+  await page.getByTestId(`target-board-${targetBoard}`).click();
 
   await page.getByTestId('confirm-card').click();
 

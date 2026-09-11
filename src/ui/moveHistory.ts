@@ -27,7 +27,7 @@ export function describeMove(msgs: Messages, move: Move): string {
       }`;
     case 'correnteza':
       return `${name} — ${cell(msgs, move.path)} → ${msgs.cellLabel} ${move.path2![move.path2!.length - 1] + 1}`;
-    default: // devorador-de-tabuleiro, bolha-protecao, tempestade, tsunami
+    default: // devorador-de-tabuleiro, supernova, bolha-protecao, tempestade, tsunami, mare-virada
       return `${name} — ${board(msgs, move.path[0])}`;
   }
 }

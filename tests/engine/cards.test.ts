@@ -168,7 +168,39 @@ describe('devorador de tabuleiro (épica, galáxia): bloqueia por 3 ações', ()
   });
 });
 
-describe('bolha de proteção (comum, praia): protege contra carta do adversário', () => {
+describe('supernova (épica, galáxia): reabre um tabuleiro já decidido', () => {
+  it('exceção à RN-CARTAS-01: só mira tabuleiro DECIDIDO (vitória de qualquer um), nunca aberto', () => {
+    let state = createGame(classic);
+    for (const move of X_WINS_TOP_ROW.slice(0, 5)) state = applyMove(state, move);
+    state = { ...state, hands: { ...state.hands, O: ['supernova'] } };
+
+    // Tabuleiro 0 (decidido, X venceu): alvo válido.
+    expect(validateCard(state, { player: 'O', card: 'supernova', path: [0] })).toBeNull();
+    // Tabuleiro 3 (ainda aberto): inválido — é o oposto das outras 8 cartas.
+    expect(validateCard(state, { player: 'O', card: 'supernova', path: [3] })).toBe('alvo-invalido');
+  });
+
+  it('apaga todas as marcas do tabuleiro decidido, reabrindo-o do zero', () => {
+    let state = createGame(classic);
+    for (const move of X_WINS_TOP_ROW.slice(0, 5)) state = applyMove(state, move);
+    state = { ...state, currentPlayer: 'X', hands: { ...state.hands, X: ['supernova'] } };
+    const after = applyCard(state, { player: 'X', card: 'supernova', path: [0] });
+    const board0 = getNode(after.board, [0]) as Board;
+    expect(board0.cells.every((c) => c === null)).toBe(true);
+    expect(after.result).toBeNull();
+    expect(after.hands.X).toHaveLength(0);
+  });
+
+  it('também reabre um tabuleiro empatado (decidido sem dono)', () => {
+    let state = createGame(classic);
+    const board0 = getNode(state.board, [0]) as Board;
+    board0.cells = ['X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X']; // empatado, sem linha
+    state = { ...state, hands: { ...state.hands, X: ['supernova'] } };
+    expect(validateCard(state, { player: 'X', card: 'supernova', path: [0] })).toBeNull();
+  });
+});
+
+describe('bolha de proteção (comum, praia): escudo total contra o adversário', () => {
   it('bloqueia carta do adversário, mas não a de quem protegeu', () => {
     let state = createGame(beach);
     state = { ...state, hands: { ...state.hands, X: ['bolha-protecao'], O: ['tsunami'] } };
@@ -183,6 +215,20 @@ describe('bolha de proteção (comum, praia): protege contra carta do adversári
     // X pode mirar o próprio tabuleiro protegido com a própria carta.
     state = { ...state, currentPlayer: 'X', hands: { ...state.hands, X: ['tsunami'] } };
     expect(validateCard(state, { player: 'X', card: 'tsunami', path: [4] })).toBeNull();
+  });
+
+  it('também bloqueia jogada normal do adversário (RN-CARTAS-03: escudo total, não só contra carta)', () => {
+    let state = createGame(beach);
+    state = { ...state, hands: { ...state.hands, X: ['bolha-protecao'] } };
+    state = applyCard(state, { player: 'X', card: 'bolha-protecao', path: [4] });
+    expect(state.currentPlayer).toBe('O');
+
+    // O tabuleiro 4 protegido some da lista de permitidos pra O, mesmo sendo
+    // uma jogada normal (sem carta nenhuma envolvida).
+    expect(allowedBoards(state).some((p) => p.join(',') === '4')).toBe(false);
+    // Mas continua disponível pra quem protegeu (X), depois que a vez voltar.
+    const forcedThere = { ...state, currentPlayer: 'X' as const, forcedPath: [4] };
+    expect(allowedBoards(forcedThere).some((p) => p.join(',') === '4')).toBe(true);
   });
 });
 
@@ -222,6 +268,45 @@ describe('tsunami (épica, praia): apaga todas as marcas de um tabuleiro', () =>
     const board4 = getNode(after.board, [4]) as Board;
     expect(board4.cells.every((c) => c === null)).toBe(true);
     expect(after.result).toBeNull();
+  });
+});
+
+describe('maré virada (épica, praia): rouba um tabuleiro vencido pelo adversário', () => {
+  function beachBoardWonBy(winner: 'X' | 'O'): GameState {
+    let state = createGame(beach);
+    const board0 = getNode(state.board, [0]) as Board;
+    const other = winner === 'X' ? 'O' : 'X';
+    board0.cells = [winner, winner, winner, other, other, null, null, null, null];
+    return state;
+  }
+
+  it('só mira tabuleiro vencido pelo ADVERSÁRIO — o próprio ou um empate são inválidos', () => {
+    let state = beachBoardWonBy('O'); // O venceu o tabuleiro 0
+    state = { ...state, hands: { ...state.hands, X: ['mare-virada'] } };
+    expect(validateCard(state, { player: 'X', card: 'mare-virada', path: [0] })).toBeNull();
+
+    let ownWin = beachBoardWonBy('X'); // X venceu o próprio tabuleiro
+    ownWin = { ...ownWin, hands: { ...ownWin.hands, X: ['mare-virada'] } };
+    expect(validateCard(ownWin, { player: 'X', card: 'mare-virada', path: [0] })).toBe('alvo-invalido');
+
+    let state2 = createGame(beach);
+    const board0 = getNode(state2.board, [0]) as Board;
+    board0.cells = ['X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'X']; // empatado
+    state2 = { ...state2, hands: { ...state2.hands, X: ['mare-virada'] } };
+    expect(validateCard(state2, { player: 'X', card: 'mare-virada', path: [0] })).toBe('alvo-invalido');
+  });
+
+  it('as marcas de quem venceu viram marcas de quem jogou a carta', () => {
+    let state = beachBoardWonBy('O');
+    state = { ...state, hands: { ...state.hands, X: ['mare-virada'] } };
+    const after = applyCard(state, { player: 'X', card: 'mare-virada', path: [0] });
+    const board0 = getNode(after.board, [0]) as Board;
+    // As 3 marcas de O (vencedor original) viraram X; as de X (perdedor
+    // original) continuam X; células vazias continuam vazias.
+    expect(board0.cells).toEqual(['X', 'X', 'X', 'X', 'X', null, null, null, null]);
+    // Efeito colateral: como a linha vencedora agora é de X, o tabuleiro
+    // continua decidido — só que a favor de quem roubou.
+    expect(after.hands.X).toHaveLength(0);
   });
 });
 

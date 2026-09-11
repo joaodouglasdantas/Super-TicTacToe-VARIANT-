@@ -93,22 +93,38 @@ export function isLocked(board: Board, actionCount = Infinity): boolean {
   return board.lockedUntilAction !== undefined && actionCount < board.lockedUntilAction;
 }
 
-// Um tabuleiro é jogável se nem ele nem nenhum ancestral está decidido ou bloqueado.
+// Spec CARTAS (Bolha de Proteção, RN-CARTAS-03): um tabuleiro protegido é um
+// escudo total enquanto durar — nem jogada normal nem carta do adversário
+// (quem não protegeu) entram nele. `blockedFor` omitido (uso normal do motor
+// sem cartas em jogo) nunca bloqueia ninguém.
+export function isProtectedAgainst(board: Board, actionCount: number, blockedFor?: Player): boolean {
+  return (
+    blockedFor !== undefined &&
+    board.protectedUntilAction !== undefined &&
+    actionCount < board.protectedUntilAction &&
+    board.protectedBy !== undefined &&
+    board.protectedBy !== blockedFor
+  );
+}
+
+// Um tabuleiro é jogável se nem ele nem nenhum ancestral está decidido,
+// bloqueado, ou protegido contra quem jogaria (`blockedFor`).
 export function isPlayablePath(
   board: Board,
   path: Path,
   tiebreak: Tiebreak,
   actionCount = Infinity,
+  blockedFor?: Player,
 ): boolean {
   let node: Board | Player | null = board;
-  if (resultOf(board, tiebreak) !== null || isLocked(board, actionCount)) return false;
+  const unavailable = (b: Board) =>
+    resultOf(b, tiebreak) !== null || isLocked(b, actionCount) || isProtectedAgainst(b, actionCount, blockedFor);
+  if (unavailable(board)) return false;
   for (const index of path) {
     if (!isBoard(node)) return false;
     node = node.cells[index];
     if (node === undefined) return false;
-    if (isBoard(node) && (resultOf(node, tiebreak) !== null || isLocked(node, actionCount))) {
-      return false;
-    }
+    if (isBoard(node) && unavailable(node)) return false;
   }
   return true;
 }
@@ -119,15 +135,21 @@ export function playableLeafBoards(
   tiebreak: Tiebreak,
   prefix: Path = [],
   actionCount = Infinity,
+  blockedFor?: Player,
 ): Path[] {
   const node = getNode(board, prefix);
-  if (!isBoard(node) || resultOf(node, tiebreak) !== null || isLocked(node, actionCount)) {
+  if (
+    !isBoard(node) ||
+    resultOf(node, tiebreak) !== null ||
+    isLocked(node, actionCount) ||
+    isProtectedAgainst(node, actionCount, blockedFor)
+  ) {
     return [];
   }
   if (node.depth === 1) return [prefix];
   const paths: Path[] = [];
   for (let i = 0; i < 9; i++) {
-    paths.push(...playableLeafBoards(board, tiebreak, [...prefix, i], actionCount));
+    paths.push(...playableLeafBoards(board, tiebreak, [...prefix, i], actionCount, blockedFor));
   }
   return paths;
 }

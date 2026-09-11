@@ -1,10 +1,12 @@
 // Mão de cartas (spec CARTAS): mostra a mão de quem está vendo a tela
-// (nomeada) e só a contagem da mão do adversário (REQ-CARTAS-07). A UI é
-// deliberadamente simples — ícone, nome, raridade e seletores por alvo —
-// refinamento visual fica pra depois (Fora do Escopo da spec).
+// (nomeada) e só a contagem da mão do adversário (REQ-CARTAS-07). O alvo é
+// escolhido numa grade 3x3 temática (o mesmo motor visual do tabuleiro),
+// não num <select> nativo — decide-se tabuleiro por tabuleiro/célula por
+// célula, igual à jogada normal, sempre validado pelo motor (validateCard),
+// nunca reimplementado aqui.
 
 import { useEffect, useState } from 'react';
-import { cardRarity, otherPlayer } from '../engine';
+import { cardRarity, getNode, otherPlayer } from '../engine';
 import type { CardId, GameState, Path, Player } from '../engine';
 import type { Messages } from '../i18n';
 import { CARD_ICON, cardDescription, cardName, cardRarityLabel } from './cardMeta';
@@ -34,26 +36,24 @@ interface CardHandProps {
   onPlayCard: (card: CardId, target: CardTarget) => void;
 }
 
-const key = (p: Path) => p.join('.');
-const fromKey = (k: string): Path => k.split('.').map(Number);
-
-function fmtBoard(msgs: Messages, p: Path): string {
-  return `${msgs.boardLabel} ${p[0] + 1}`;
+function fmtBoard(msgs: Messages, boardIndex: number): string {
+  return `${msgs.boardLabel} ${boardIndex + 1}`;
 }
 
-function fmtCell(msgs: Messages, p: Path): string {
-  return `${msgs.boardLabel} ${p[0] + 1}, ${msgs.cellLabel} ${p[p.length - 1] + 1}`;
+function fmtCell(msgs: Messages, boardIndex: number, cellIndex: number): string {
+  return `${msgs.boardLabel} ${boardIndex + 1}, ${msgs.cellLabel} ${cellIndex + 1}`;
 }
 
 export function CardHand({ msgs, state, viewerSymbol, onPlayCard }: CardHandProps) {
   const [selected, setSelected] = useState<CardId | null>(null);
-  const [board, setBoard] = useState('');
-  const [cell, setCell] = useState('');
-  const [position, setPosition] = useState('');
-  const [boardA, setBoardA] = useState('');
-  const [boardB, setBoardB] = useState('');
-  const [origin, setOrigin] = useState('');
-  const [dest, setDest] = useState('');
+  const [board, setBoard] = useState<number | null>(null);
+  const [cell, setCell] = useState<number | null>(null);
+  const [position, setPosition] = useState<number | null>(null);
+  const [boardA, setBoardA] = useState<number | null>(null);
+  const [boardB, setBoardB] = useState<number | null>(null);
+  const [originBoard, setOriginBoard] = useState<number | null>(null);
+  const [origin, setOrigin] = useState<number | null>(null);
+  const [dest, setDest] = useState<number | null>(null);
 
   const hand = state.hands[viewerSymbol];
   const opponentCount = state.hands[otherPlayer(viewerSymbol)].length;
@@ -68,13 +68,14 @@ export function CardHand({ msgs, state, viewerSymbol, onPlayCard }: CardHandProp
   function selectCard(card: CardId) {
     if (!canAct) return;
     setSelected(card);
-    setBoard('');
-    setCell('');
-    setPosition('');
-    setBoardA('');
-    setBoardB('');
-    setOrigin('');
-    setDest('');
+    setBoard(null);
+    setCell(null);
+    setPosition(null);
+    setBoardA(null);
+    setBoardB(null);
+    setOriginBoard(null);
+    setOrigin(null);
+    setDest(null);
   }
 
   function confirm(target: CardTarget) {
@@ -135,6 +136,8 @@ export function CardHand({ msgs, state, viewerSymbol, onPlayCard }: CardHandProp
           setBoardA={setBoardA}
           boardB={boardB}
           setBoardB={setBoardB}
+          originBoard={originBoard}
+          setOriginBoard={setOriginBoard}
           origin={origin}
           setOrigin={setOrigin}
           dest={dest}
@@ -145,6 +148,80 @@ export function CardHand({ msgs, state, viewerSymbol, onPlayCard }: CardHandProp
   );
 }
 
+// ---- Grade 3x3 temática (substitui o <select> nativo) ----------------------
+
+interface GridOption {
+  value: number;
+  label: string;
+  display: string;
+  disabled: boolean;
+}
+
+function GridPicker({
+  name,
+  options,
+  selected,
+  onSelect,
+}: {
+  name: string;
+  options: GridOption[];
+  selected: number | null;
+  onSelect: (value: number) => void;
+}) {
+  return (
+    <div className="target-grid" data-testid={`${name}-grid`}>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          className={`target-cell${selected === opt.value ? ' selected' : ''}`}
+          disabled={opt.disabled}
+          title={opt.label}
+          aria-label={opt.label}
+          aria-pressed={selected === opt.value}
+          data-testid={`${name}-${opt.value}`}
+          onClick={() => onSelect(opt.value)}
+        >
+          {opt.display}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function boardOptions(msgs: Messages, valid: Path[]): GridOption[] {
+  const validSet = new Set(valid.map((p) => p[0]));
+  return Array.from({ length: 9 }, (_, i) => ({
+    value: i,
+    label: fmtBoard(msgs, i),
+    display: String(i + 1),
+    disabled: !validSet.has(i),
+  }));
+}
+
+function cellOptions(msgs: Messages, state: GameState, boardIndex: number, valid: Set<number>): GridOption[] {
+  return Array.from({ length: 9 }, (_, i) => {
+    // Célula-folha (path de profundidade 2): nunca é um Board, só marca ou vazio.
+    const mark = getNode(state.board, [boardIndex, i]) as Player | null;
+    return {
+      value: i,
+      label: fmtCell(msgs, boardIndex, i),
+      display: mark ?? String(i + 1),
+      disabled: !valid.has(i),
+    };
+  });
+}
+
+function positionOptions(msgs: Messages, valid: number[]): GridOption[] {
+  const validSet = new Set(valid);
+  return Array.from({ length: 9 }, (_, i) => ({
+    value: i,
+    label: `${msgs.cellLabel} ${i + 1}`,
+    display: String(i + 1),
+    disabled: !validSet.has(i),
+  }));
+}
+
 interface TargetPanelProps {
   msgs: Messages;
   state: GameState;
@@ -152,20 +229,22 @@ interface TargetPanelProps {
   card: CardId;
   onConfirm: (target: CardTarget) => void;
   onCancel: () => void;
-  board: string;
-  setBoard: (v: string) => void;
-  cell: string;
-  setCell: (v: string) => void;
-  position: string;
-  setPosition: (v: string) => void;
-  boardA: string;
-  setBoardA: (v: string) => void;
-  boardB: string;
-  setBoardB: (v: string) => void;
-  origin: string;
-  setOrigin: (v: string) => void;
-  dest: string;
-  setDest: (v: string) => void;
+  board: number | null;
+  setBoard: (v: number | null) => void;
+  cell: number | null;
+  setCell: (v: number | null) => void;
+  position: number | null;
+  setPosition: (v: number | null) => void;
+  boardA: number | null;
+  setBoardA: (v: number | null) => void;
+  boardB: number | null;
+  setBoardB: (v: number | null) => void;
+  originBoard: number | null;
+  setOriginBoard: (v: number | null) => void;
+  origin: number | null;
+  setOrigin: (v: number | null) => void;
+  dest: number | null;
+  setDest: (v: number | null) => void;
 }
 
 function CardTargetPanel(props: TargetPanelProps) {
@@ -186,6 +265,8 @@ function CardTargetPanel(props: TargetPanelProps) {
     setBoardA,
     boardB,
     setBoardB,
+    originBoard,
+    setOriginBoard,
     origin,
     setOrigin,
     dest,
@@ -199,160 +280,133 @@ function CardTargetPanel(props: TargetPanelProps) {
 
   if (shape === 'board') {
     const options = validBoards(state, player, card);
-    ready = board !== '';
-    doConfirm = () => onConfirm({ path: fromKey(board) });
+    ready = board !== null;
+    doConfirm = () => onConfirm({ path: [board!] });
     body = (
-      <label>
-        {msgs.chooseBoard}
-        <select value={board} onChange={(e) => setBoard(e.target.value)} data-testid="target-board">
-          <option value="" disabled>
-            {msgs.chooseBoard}
-          </option>
-          {options.map((p) => (
-            <option key={key(p)} value={key(p)}>
-              {fmtBoard(msgs, p)}
-            </option>
-          ))}
-        </select>
+      <div>
+        <p className="target-step-label">{msgs.chooseBoard}</p>
+        <GridPicker name="target-board" options={boardOptions(msgs, options)} selected={board} onSelect={setBoard} />
         {options.length === 0 && <small>{msgs.noValidTargets}</small>}
-      </label>
+      </div>
     );
   } else if (shape === 'cell') {
-    const options = validCells(state, player, card);
-    ready = cell !== '';
-    doConfirm = () => onConfirm({ path: fromKey(cell) });
+    const allValid = validCells(state, player, card);
+    const boardsWithCells = new Set(allValid.map((p) => p[0]));
+    ready = board !== null && cell !== null;
+    doConfirm = () => onConfirm({ path: [board!, cell!] });
+    const cellSet = board === null ? new Set<number>() : new Set(allValid.filter((p) => p[0] === board).map((p) => p[1]));
     body = (
-      <label>
-        {msgs.chooseCell}
-        <select value={cell} onChange={(e) => setCell(e.target.value)} data-testid="target-cell">
-          <option value="" disabled>
-            {msgs.chooseCell}
-          </option>
-          {options.map((p) => (
-            <option key={key(p)} value={key(p)}>
-              {fmtCell(msgs, p)}
-            </option>
-          ))}
-        </select>
-        {options.length === 0 && <small>{msgs.noValidTargets}</small>}
-      </label>
+      <div>
+        <p className="target-step-label">{msgs.chooseBoard}</p>
+        <GridPicker
+          name="target-cell-board"
+          options={boardOptions(msgs, [...boardsWithCells].map((b) => [b]))}
+          selected={board}
+          onSelect={(v) => {
+            setBoard(v);
+            setCell(null);
+          }}
+        />
+        {allValid.length === 0 && <small>{msgs.noValidTargets}</small>}
+        {board !== null && (
+          <>
+            <p className="target-step-label">{msgs.chooseCell}</p>
+            <GridPicker name="target-cell" options={cellOptions(msgs, state, board, cellSet)} selected={cell} onSelect={setCell} />
+          </>
+        )}
+      </div>
     );
   } else if (shape === 'star') {
     const positions = starPositions(state, player);
-    const posNum = position === '' ? null : Number(position);
-    const candidatesA = posNum === null ? [] : boardsForPosition(state, player, posNum);
-    const candidatesB = candidatesA.filter((p) => key(p) !== boardA);
-    ready = position !== '' && boardA !== '' && boardB !== '';
-    doConfirm = () =>
-      onConfirm({ path: fromKey(boardA), path2: fromKey(boardB), cellIndex: Number(position) });
+    const candidatesA = position === null ? [] : boardsForPosition(state, player, position);
+    const candidatesB = candidatesA.filter((p) => p[0] !== boardA);
+    ready = position !== null && boardA !== null && boardB !== null;
+    doConfirm = () => onConfirm({ path: [boardA!], path2: [boardB!], cellIndex: position! });
     body = (
-      <>
-        <label>
-          {msgs.choosePosition}
-          <select
-            value={position}
-            onChange={(e) => {
-              setPosition(e.target.value);
-              setBoardA('');
-              setBoardB('');
-            }}
-            data-testid="target-position"
-          >
-            <option value="" disabled>
-              {msgs.choosePosition}
-            </option>
-            {positions.map((i) => (
-              <option key={i} value={i}>
-                {i + 1}
-              </option>
-            ))}
-          </select>
-          {positions.length === 0 && <small>{msgs.noValidTargets}</small>}
-        </label>
-        {position !== '' && (
-          <label>
-            {msgs.chooseBoardA}
-            <select
-              value={boardA}
-              onChange={(e) => {
-                setBoardA(e.target.value);
-                setBoardB('');
+      <div>
+        <p className="target-step-label">{msgs.choosePosition}</p>
+        <GridPicker
+          name="target-position"
+          options={positionOptions(msgs, positions)}
+          selected={position}
+          onSelect={(v) => {
+            setPosition(v);
+            setBoardA(null);
+            setBoardB(null);
+          }}
+        />
+        {positions.length === 0 && <small>{msgs.noValidTargets}</small>}
+        {position !== null && (
+          <>
+            <p className="target-step-label">{msgs.chooseBoardA}</p>
+            <GridPicker
+              name="target-board-a"
+              options={boardOptions(msgs, candidatesA)}
+              selected={boardA}
+              onSelect={(v) => {
+                setBoardA(v);
+                setBoardB(null);
               }}
-              data-testid="target-board-a"
-            >
-              <option value="" disabled>
-                {msgs.chooseBoardA}
-              </option>
-              {candidatesA.map((p) => (
-                <option key={key(p)} value={key(p)}>
-                  {fmtBoard(msgs, p)}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </>
         )}
-        {boardA !== '' && (
-          <label>
-            {msgs.chooseBoardB}
-            <select value={boardB} onChange={(e) => setBoardB(e.target.value)} data-testid="target-board-b">
-              <option value="" disabled>
-                {msgs.chooseBoardB}
-              </option>
-              {candidatesB.map((p) => (
-                <option key={key(p)} value={key(p)}>
-                  {fmtBoard(msgs, p)}
-                </option>
-              ))}
-            </select>
-          </label>
+        {boardA !== null && (
+          <>
+            <p className="target-step-label">{msgs.chooseBoardB}</p>
+            <GridPicker name="target-board-b" options={boardOptions(msgs, candidatesB)} selected={boardB} onSelect={setBoardB} />
+          </>
         )}
-      </>
+      </div>
     );
   } else {
     // 'current' (correnteza)
     const origins = correntezaOrigins(state, player);
-    const destinations = origin === '' ? [] : correntezaDestinations(state, player, fromKey(origin));
-    ready = origin !== '' && dest !== '';
-    doConfirm = () => onConfirm({ path: fromKey(origin), path2: fromKey(dest) });
+    const boardsWithOrigins = new Set(origins.map((p) => p[0]));
+    const originSet = originBoard === null ? new Set<number>() : new Set(origins.filter((p) => p[0] === originBoard).map((p) => p[1]));
+    const destinations = originBoard === null || origin === null ? [] : correntezaDestinations(state, player, [originBoard, origin]);
+    const destSet = new Set(destinations.map((p) => p[1]));
+    ready = originBoard !== null && origin !== null && dest !== null;
+    doConfirm = () => onConfirm({ path: [originBoard!, origin!], path2: [originBoard!, dest!] });
     body = (
-      <>
-        <label>
-          {msgs.chooseOrigin}
-          <select
-            value={origin}
-            onChange={(e) => {
-              setOrigin(e.target.value);
-              setDest('');
-            }}
-            data-testid="target-origin"
-          >
-            <option value="" disabled>
-              {msgs.chooseOrigin}
-            </option>
-            {origins.map((p) => (
-              <option key={key(p)} value={key(p)}>
-                {fmtCell(msgs, p)}
-              </option>
-            ))}
-          </select>
-          {origins.length === 0 && <small>{msgs.noValidTargets}</small>}
-        </label>
-        {origin !== '' && (
-          <label>
-            {msgs.chooseDestination}
-            <select value={dest} onChange={(e) => setDest(e.target.value)} data-testid="target-dest">
-              <option value="" disabled>
-                {msgs.chooseDestination}
-              </option>
-              {destinations.map((p) => (
-                <option key={key(p)} value={key(p)}>
-                  {fmtCell(msgs, p)}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div>
+        <p className="target-step-label">{msgs.chooseBoard}</p>
+        <GridPicker
+          name="target-origin-board"
+          options={boardOptions(msgs, [...boardsWithOrigins].map((b) => [b]))}
+          selected={originBoard}
+          onSelect={(v) => {
+            setOriginBoard(v);
+            setOrigin(null);
+            setDest(null);
+          }}
+        />
+        {origins.length === 0 && <small>{msgs.noValidTargets}</small>}
+        {originBoard !== null && (
+          <>
+            <p className="target-step-label">{msgs.chooseOrigin}</p>
+            <GridPicker
+              name="target-origin-cell"
+              options={cellOptions(msgs, state, originBoard, originSet)}
+              selected={origin}
+              onSelect={(v) => {
+                setOrigin(v);
+                setDest(null);
+              }}
+            />
+          </>
         )}
-      </>
+        {originBoard !== null && origin !== null && (
+          <>
+            <p className="target-step-label">{msgs.chooseDestination}</p>
+            <GridPicker
+              name="target-dest"
+              options={cellOptions(msgs, state, originBoard, destSet)}
+              selected={dest}
+              onSelect={setDest}
+            />
+          </>
+        )}
+      </div>
     );
   }
 

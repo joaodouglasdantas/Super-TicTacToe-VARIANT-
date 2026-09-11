@@ -11,7 +11,9 @@ import {
   IconCardCorrenteza,
   IconCardDevoradorDeTabuleiro,
   IconCardEstrelaDaSorte,
+  IconCardMareVirada,
   IconCardSaltoEstelar,
+  IconCardSupernova,
   IconCardTempestade,
   IconCardTsunami,
 } from './icons';
@@ -24,10 +26,12 @@ const NAME_KEY: Record<CardId, NameKey> = {
   'buraco-negro': 'cardBuracoNegroName',
   'estrela-da-sorte': 'cardEstrelaDaSorteName',
   'devorador-de-tabuleiro': 'cardDevoradorDeTabuleiroName',
+  supernova: 'cardSupernovaName',
   'bolha-protecao': 'cardBolhaProtecaoName',
   correnteza: 'cardCorrentezaName',
   tempestade: 'cardTempestadeName',
   tsunami: 'cardTsunamiName',
+  'mare-virada': 'cardMareViradaName',
 };
 
 const DESC_KEY: Record<CardId, DescKey> = {
@@ -35,10 +39,12 @@ const DESC_KEY: Record<CardId, DescKey> = {
   'buraco-negro': 'cardBuracoNegroDesc',
   'estrela-da-sorte': 'cardEstrelaDaSorteDesc',
   'devorador-de-tabuleiro': 'cardDevoradorDeTabuleiroDesc',
+  supernova: 'cardSupernovaDesc',
   'bolha-protecao': 'cardBolhaProtecaoDesc',
   correnteza: 'cardCorrentezaDesc',
   tempestade: 'cardTempestadeDesc',
   tsunami: 'cardTsunamiDesc',
+  'mare-virada': 'cardMareViradaDesc',
 };
 
 export const CARD_ICON: Record<CardId, (props: { className?: string }) => JSX.Element> = {
@@ -46,10 +52,12 @@ export const CARD_ICON: Record<CardId, (props: { className?: string }) => JSX.El
   'buraco-negro': IconCardBuracoNegro,
   'estrela-da-sorte': IconCardEstrelaDaSorte,
   'devorador-de-tabuleiro': IconCardDevoradorDeTabuleiro,
+  supernova: IconCardSupernova,
   'bolha-protecao': IconCardBolhaProtecao,
   correnteza: IconCardCorrenteza,
   tempestade: IconCardTempestade,
   tsunami: IconCardTsunami,
+  'mare-virada': IconCardMareVirada,
 };
 
 export function cardName(msgs: Messages, card: CardId): string {
